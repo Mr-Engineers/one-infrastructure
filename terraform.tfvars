@@ -74,9 +74,9 @@ github_repositories = {
   frontend       = "one-frontend"
   backend        = "one-backend"
   proxy_server   = "proxy-server"
-  backend_2      = "one-backend-2"
+  backend_2      = "two-backend"
   infrastructure = "one-infrastructure"
-  ai-agent  = "purchasing-agent"
+  ai_agent  = "purchasing-agent"
 }
 
 github_deploy_branches = ["main", "feature/cicd"]
