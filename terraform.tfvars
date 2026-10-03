@@ -50,7 +50,7 @@ proxy_server_cpu            = 256
 proxy_server_memory         = 512
 proxy_server_desired_count  = 1
 
-# AI agent (set an image URI to start it; until then it runs 0 tasks)
+# AI agent (null image = one-dev-ai-agent ECR repository, pushed by purchasing-agent CI)
 ai_agent_image         = null
 ai_agent_cpu           = 512
 ai_agent_memory        = 1024
@@ -76,7 +76,7 @@ github_repositories = {
   proxy_server   = "proxy-server"
   backend_2      = "two-backend"
   infrastructure = "one-infrastructure"
-  ai_agent  = "purchasing-agent"
+  ai_agent       = "purchasing-agent"
 }
 
 github_deploy_branches = ["main", "feature/cicd"]
