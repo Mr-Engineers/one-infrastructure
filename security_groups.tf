@@ -109,6 +109,45 @@ resource "aws_vpc_security_group_egress_rule" "backend_all" {
 }
 
 ################################################################################
+# Test-backend tasks: same access as the backend (frontend and proxy-server)
+################################################################################
+
+resource "aws_security_group" "test_backend" {
+  name        = "${local.name_prefix}-test-backend-sg"
+  description = "Test-backend ECS tasks"
+  vpc_id      = module.vpc_main.vpc_id
+
+  tags = {
+    Name = "${local.name_prefix}-test-backend-sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "test_backend_from_frontend" {
+  security_group_id            = aws_security_group.test_backend.id
+  description                  = "Traffic from frontend tasks"
+  referenced_security_group_id = aws_security_group.frontend.id
+  ip_protocol                  = "tcp"
+  from_port                    = var.backend_container_port
+  to_port                      = var.backend_container_port
+}
+
+resource "aws_vpc_security_group_ingress_rule" "test_backend_from_proxy_server" {
+  security_group_id            = aws_security_group.test_backend.id
+  description                  = "Traffic from proxy-server tasks"
+  referenced_security_group_id = aws_security_group.proxy_server.id
+  ip_protocol                  = "tcp"
+  from_port                    = var.backend_container_port
+  to_port                      = var.backend_container_port
+}
+
+resource "aws_vpc_security_group_egress_rule" "test_backend_all" {
+  security_group_id = aws_security_group.test_backend.id
+  description       = "All outbound traffic (ECR, CloudWatch, internet via NAT)"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}
+
+################################################################################
 # Proxy-server tasks: the AI agent's gateway to the backend, reachable only from
 # AI agent tasks
 ################################################################################

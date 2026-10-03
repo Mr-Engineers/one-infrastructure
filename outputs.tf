@@ -99,6 +99,21 @@ output "proxy_server_internal_url" {
   value       = local.proxy_server_internal_url
 }
 
+output "ecr_test_backend_repository_url" {
+  description = "URL of the test-backend ECR repository."
+  value       = aws_ecr_repository.app["test-backend"].repository_url
+}
+
+output "ecs_test_backend_service_name" {
+  description = "Name of the test-backend ECS service."
+  value       = aws_ecs_service.test_backend.name
+}
+
+output "test_backend_internal_url" {
+  description = "Address of the test-backend inside the cluster (Service Connect)."
+  value       = local.test_backend_internal_url
+}
+
 output "ecr_ai_agent_repository_url" {
   description = "URL of the AI agent ECR repository."
   value       = aws_ecr_repository.app["ai-agent"].repository_url

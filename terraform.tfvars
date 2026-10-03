@@ -44,6 +44,14 @@ backend_environment = {
 }
 backend_secret_names = ["SUPABASE_URL", "SUPABASE_KEY"]
 
+# Test copy of the backend (test-backend-one): same Supabase secrets, test_* tables
+test_backend_image_tag     = "latest"
+test_backend_cpu           = 256
+test_backend_memory        = 512
+test_backend_desired_count = 1
+test_backend_table_prefix  = "test_"
+test_backend_environment   = {}
+
 proxy_server_image_tag      = "latest"
 proxy_server_container_port = 8080
 proxy_server_cpu            = 256
@@ -82,6 +90,7 @@ github_repositories = {
   backend_2      = "two-backend"
   infrastructure = "one-infrastructure"
   ai_agent       = "purchasing-agent"
+  test_backend   = "test-backend-one"
 }
 
 github_deploy_branches = ["main", "feature/cicd"]

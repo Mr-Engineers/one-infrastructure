@@ -170,6 +170,47 @@ variable "backend_secret_names" {
   default     = []
 }
 
+variable "test_backend_image_tag" {
+  description = "Tag of the test-backend image in ECR."
+  type        = string
+  default     = "latest"
+}
+
+variable "test_backend_cpu" {
+  description = "Fargate CPU units for the test-backend task (256 = 0.25 vCPU)."
+  type        = number
+  default     = 256
+}
+
+variable "test_backend_memory" {
+  description = "Fargate memory (MiB) for the test-backend task."
+  type        = number
+  default     = 512
+}
+
+variable "test_backend_desired_count" {
+  description = "Number of running test-backend tasks."
+  type        = number
+  default     = 1
+}
+
+variable "test_backend_table_prefix" {
+  description = "Prefix of the test-backend tables in the shared database (DB_TABLE_PREFIX). Must not be empty, or it would use the backend's tables."
+  type        = string
+  default     = "test_"
+
+  validation {
+    condition     = length(var.test_backend_table_prefix) > 0
+    error_message = "An empty prefix would point the test-backend at the backend's tables."
+  }
+}
+
+variable "test_backend_environment" {
+  description = "Plain-text environment variables for the test-backend container, on top of backend_environment."
+  type        = map(string)
+  default     = {}
+}
+
 variable "proxy_server_image_tag" {
   description = "Tag of the proxy-server image in ECR."
   type        = string
@@ -346,6 +387,7 @@ variable "github_repositories" {
     proxy_server   = string
     backend_2      = string
     ai_agent       = string
+    test_backend   = string
     infrastructure = string
   })
 }

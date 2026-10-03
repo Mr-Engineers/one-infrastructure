@@ -37,6 +37,11 @@ resource "aws_iam_role" "backend_task" {
   assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
 }
 
+resource "aws_iam_role" "test_backend_task" {
+  name               = "${local.name_prefix}-test-backend-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
+}
+
 resource "aws_iam_role" "proxy_server_task" {
   name               = "${local.name_prefix}-proxy-server-task"
   assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json

@@ -8,6 +8,10 @@ locals {
   backend_service_connect_name = "backend"
   backend_internal_url         = "http://${local.backend_service_connect_name}:${var.backend_container_port}"
 
+  # Test copy of the backend (test-backend-one): same database, test_* tables
+  test_backend_service_connect_name = "test-backend"
+  test_backend_internal_url         = "http://${local.test_backend_service_connect_name}:${var.backend_container_port}"
+
   proxy_server_service_connect_name = "proxy-server"
   proxy_server_internal_url         = "http://${local.proxy_server_service_connect_name}:${var.proxy_server_container_port}"
 

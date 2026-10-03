@@ -37,6 +37,12 @@ locals {
       task_role      = aws_iam_role.backend_task.arn
     }
     # Key must match var.github_repositories (it indexes github_oidc_subjects)
+    test_backend = {
+      repository     = var.github_repositories.test_backend
+      ecr_repository = aws_ecr_repository.app["test-backend"].arn
+      ecs_service    = aws_ecs_service.test_backend.id
+      task_role      = aws_iam_role.test_backend_task.arn
+    }
     proxy_server = {
       repository     = var.github_repositories.proxy_server
       ecr_repository = aws_ecr_repository.app["proxy-server"].arn
