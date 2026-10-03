@@ -333,7 +333,7 @@ variable "github_repositories" {
     backend        = string
     proxy_server   = string
     backend_2      = string
-    ai_agent       = optional(string, "purchasing-agent")
+    ai_agent       = string
     infrastructure = string
   })
 }
