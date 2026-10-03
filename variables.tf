@@ -206,6 +206,12 @@ variable "proxy_server_environment" {
   default     = {}
 }
 
+variable "proxy_server_bedrock_model_ids" {
+  description = "Bedrock models proxy-server may invoke on behalf of agents (SigV4 with the task role)."
+  type        = list(string)
+  default     = ["qwen.qwen3-32b-v1:0"]
+}
+
 variable "ai_agent_image" {
   description = "Full image URI of the AI agent. Null = the ai-agent ECR repository with ai_agent_image_tag."
   type        = string
