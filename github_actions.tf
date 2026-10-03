@@ -36,6 +36,19 @@ locals {
       ecs_service    = aws_ecs_service.backend.id
       task_role      = aws_iam_role.backend_task.arn
     }
+    # Key must match var.github_repositories (it indexes github_oidc_subjects)
+    proxy_server = {
+      repository     = var.github_repositories.proxy_server
+      ecr_repository = aws_ecr_repository.app["proxy-server"].arn
+      ecs_service    = aws_ecs_service.proxy_server.id
+      task_role      = aws_iam_role.proxy_server_task.arn
+    }
+    backend_2 = {
+      repository     = var.github_repositories.backend_2
+      ecr_repository = aws_ecr_repository.app["backend-2"].arn
+      ecs_service    = aws_ecs_service.backend_2.id
+      task_role      = aws_iam_role.backend_2_task.arn
+    }
   }
 }
 
@@ -68,8 +81,8 @@ data "aws_iam_policy_document" "github_deploy_assume_role" {
 resource "aws_iam_role" "github_deploy" {
   for_each = local.github_deploy_apps
 
-  name               = "${local.name_prefix}-github-deploy-${each.key}"
-  description        = "Assumed by GitHub Actions in ${var.github_org}/${each.value.repository} to deploy the ${each.key}"
+  name               = "${local.name_prefix}-github-deploy-${replace(each.key, "_", "-")}"
+  description        = "Assumed by GitHub Actions in ${var.github_org}/${each.value.repository} to deploy the ${replace(each.key, "_", "-")}"
   assume_role_policy = data.aws_iam_policy_document.github_deploy_assume_role[each.key].json
 }
 
@@ -129,6 +142,17 @@ data "aws_iam_policy_document" "github_deploy" {
       test     = "StringEquals"
       variable = "iam:PassedToService"
       values   = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+
+  # The frontend build reads its VITE_* config from SSM (see ssm.tf)
+  dynamic "statement" {
+    for_each = each.key == "frontend" && length(aws_ssm_parameter.frontend_env) > 0 ? [1] : []
+
+    content {
+      sid       = "ReadBuildConfig"
+      actions   = ["ssm:GetParameter", "ssm:GetParameters"]
+      resources = [for parameter in aws_ssm_parameter.frontend_env : parameter.arn]
     }
   }
 }

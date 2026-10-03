@@ -1,22 +1,15 @@
-data "aws_availability_zones" "available" {
-  state = "available"
-}
-
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
 
-  azs = slice(data.aws_availability_zones.available.names, 0, var.az_count)
-
-  # Public subnets: 10.0.0.0/24, 10.0.1.0/24, ...
-  # Private subnets: 10.0.100.0/24, 10.0.101.0/24, ...
-  public_subnet_cidrs  = [for i in range(var.az_count) : cidrsubnet(var.vpc_cidr, 8, i)]
-  private_subnet_cidrs = [for i in range(var.az_count) : cidrsubnet(var.vpc_cidr, 8, i + 100)]
-
-  nat_gateway_count = var.single_nat_gateway ? 1 : var.az_count
+  # Resources of cluster 2 (separate VPC), e.g. one-dev-2-vpc
+  name_prefix_2 = "${local.name_prefix}-2"
 
   # Name under which the backend is reachable from other services via ECS Service Connect
   backend_service_connect_name = "backend"
   backend_internal_url         = "http://${local.backend_service_connect_name}:${var.backend_container_port}"
+
+  proxy_server_service_connect_name = "proxy-server"
+  proxy_server_internal_url         = "http://${local.proxy_server_service_connect_name}:${var.proxy_server_container_port}"
 
   common_tags = merge(
     {

@@ -7,7 +7,7 @@ resource "aws_lb" "main" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = aws_subnet.public[*].id
+  subnets            = module.vpc_main.public_subnet_ids
 
   drop_invalid_header_fields = true
 
@@ -23,7 +23,7 @@ resource "aws_lb_target_group" "frontend" {
   port        = var.frontend_container_port
   protocol    = "HTTP"
   target_type = "ip"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = module.vpc_main.vpc_id
 
   deregistration_delay = 30
 

@@ -1,127 +1,76 @@
 ################################################################################
-# VPC
+# Cluster 1 VPC: frontend, backend, proxy-server, AI agent
 ################################################################################
 
-resource "aws_vpc" "main" {
-  cidr_block           = var.vpc_cidr
-  enable_dns_support   = true
-  enable_dns_hostnames = true
+module "vpc_main" {
+  source = "./modules/vpc"
 
-  tags = {
-    Name = "${local.name_prefix}-vpc"
-  }
+  name               = local.name_prefix
+  cidr               = var.vpc_cidr
+  az_count           = var.az_count
+  single_nat_gateway = var.single_nat_gateway
 }
 
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name = "${local.name_prefix}-igw"
-  }
+# The network used to live in the root module; keep the existing resources.
+moved {
+  from = aws_vpc.main
+  to   = module.vpc_main.aws_vpc.this
 }
 
-################################################################################
-# Subnets
-################################################################################
-
-resource "aws_subnet" "public" {
-  count = var.az_count
-
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = local.public_subnet_cidrs[count.index]
-  availability_zone       = local.azs[count.index]
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name = "${local.name_prefix}-public-${local.azs[count.index]}"
-    Tier = "public"
-  }
+moved {
+  from = aws_internet_gateway.main
+  to   = module.vpc_main.aws_internet_gateway.this
 }
 
-resource "aws_subnet" "private" {
-  count = var.az_count
-
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = local.private_subnet_cidrs[count.index]
-  availability_zone = local.azs[count.index]
-
-  tags = {
-    Name = "${local.name_prefix}-private-${local.azs[count.index]}"
-    Tier = "private"
-  }
+moved {
+  from = aws_subnet.public
+  to   = module.vpc_main.aws_subnet.public
 }
 
-################################################################################
-# NAT Gateway(s)
-################################################################################
-
-resource "aws_eip" "nat" {
-  count = local.nat_gateway_count
-
-  domain = "vpc"
-
-  tags = {
-    Name = "${local.name_prefix}-nat-eip-${count.index}"
-  }
-
-  depends_on = [aws_internet_gateway.main]
+moved {
+  from = aws_subnet.private
+  to   = module.vpc_main.aws_subnet.private
 }
 
-resource "aws_nat_gateway" "main" {
-  count = local.nat_gateway_count
+moved {
+  from = aws_eip.nat
+  to   = module.vpc_main.aws_eip.nat
+}
 
-  allocation_id = aws_eip.nat[count.index].id
-  subnet_id     = aws_subnet.public[count.index].id
+moved {
+  from = aws_nat_gateway.main
+  to   = module.vpc_main.aws_nat_gateway.this
+}
 
-  tags = {
-    Name = "${local.name_prefix}-nat-${count.index}"
-  }
+moved {
+  from = aws_route_table.public
+  to   = module.vpc_main.aws_route_table.public
+}
 
-  depends_on = [aws_internet_gateway.main]
+moved {
+  from = aws_route_table_association.public
+  to   = module.vpc_main.aws_route_table_association.public
+}
+
+moved {
+  from = aws_route_table.private
+  to   = module.vpc_main.aws_route_table.private
+}
+
+moved {
+  from = aws_route_table_association.private
+  to   = module.vpc_main.aws_route_table_association.private
 }
 
 ################################################################################
-# Route tables
+# Cluster 2 VPC: backend-2 behind its own public load balancer
 ################################################################################
 
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
+module "vpc_2" {
+  source = "./modules/vpc"
 
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
-
-  tags = {
-    Name = "${local.name_prefix}-public-rt"
-  }
-}
-
-resource "aws_route_table_association" "public" {
-  count = var.az_count
-
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_route_table" "private" {
-  count = var.az_count
-
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.main[var.single_nat_gateway ? 0 : count.index].id
-  }
-
-  tags = {
-    Name = "${local.name_prefix}-private-rt-${local.azs[count.index]}"
-  }
-}
-
-resource "aws_route_table_association" "private" {
-  count = var.az_count
-
-  subnet_id      = aws_subnet.private[count.index].id
-  route_table_id = aws_route_table.private[count.index].id
+  name               = local.name_prefix_2
+  cidr               = var.vpc_2_cidr
+  az_count           = var.az_count
+  single_nat_gateway = var.single_nat_gateway
 }

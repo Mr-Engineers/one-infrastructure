@@ -66,7 +66,7 @@ resource "aws_ecs_service" "frontend" {
   }
 
   network_configuration {
-    subnets          = aws_subnet.private[*].id
+    subnets          = module.vpc_main.private_subnet_ids
     security_groups  = [aws_security_group.frontend.id]
     assign_public_ip = false
   }

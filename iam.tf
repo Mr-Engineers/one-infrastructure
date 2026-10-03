@@ -36,3 +36,18 @@ resource "aws_iam_role" "backend_task" {
   name               = "${local.name_prefix}-backend-task"
   assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
 }
+
+resource "aws_iam_role" "proxy_server_task" {
+  name               = "${local.name_prefix}-proxy-server-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
+}
+
+resource "aws_iam_role" "ai_agent_task" {
+  name               = "${local.name_prefix}-ai-agent-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
+}
+
+resource "aws_iam_role" "backend_2_task" {
+  name               = "${local.name_prefix}-backend-2-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
+}

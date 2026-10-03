@@ -33,20 +33,38 @@ resource "aws_ecs_task_definition" "backend" {
         },
       ]
 
-      environment = [
-        for key, value in var.backend_environment : {
-          name  = key
-          value = value
-        }
-      ]
+      environment = concat(
+        [
+          {
+            # Public address of backend-2 in cluster 2 (via its load balancer, over the internet)
+            name  = "BACKEND_2_URL"
+            value = local.backend_2_url
+          },
+        ],
+        [
+          for key, value in var.backend_environment : {
+            name  = key
+            value = value
+          }
+        ],
+      )
 
       # Injected from SSM Parameter Store at task start (see ssm.tf)
-      secrets = [
-        for name, parameter in aws_ssm_parameter.backend_secret : {
-          name      = name
-          valueFrom = parameter.arn
-        }
-      ]
+      secrets = concat(
+        [
+          for name, parameter in aws_ssm_parameter.backend_secret : {
+            name      = name
+            valueFrom = parameter.arn
+          }
+        ],
+        [
+          {
+            # Requests carrying it came through proxy-server
+            name      = "GATEWAY_TOKEN"
+            valueFrom = aws_ssm_parameter.gateway_token.arn
+          },
+        ],
+      )
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -72,7 +90,7 @@ resource "aws_ecs_service" "backend" {
   }
 
   network_configuration {
-    subnets          = aws_subnet.private[*].id
+    subnets          = module.vpc_main.private_subnet_ids
     security_groups  = [aws_security_group.backend.id]
     assign_public_ip = false
   }

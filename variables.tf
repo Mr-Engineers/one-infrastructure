@@ -122,6 +122,12 @@ variable "frontend_health_check_path" {
   default     = "/"
 }
 
+variable "frontend_env_parameter_names" {
+  description = "Build-time config (VITE_*) of the frontend, stored as String parameters in SSM and read by the frontend CI."
+  type        = list(string)
+  default     = []
+}
+
 variable "backend_image_tag" {
   description = "Tag of the backend image in ECR."
   type        = string
@@ -164,6 +170,130 @@ variable "backend_secret_names" {
   default     = []
 }
 
+variable "proxy_server_image_tag" {
+  description = "Tag of the proxy-server image in ECR."
+  type        = string
+  default     = "latest"
+}
+
+variable "proxy_server_container_port" {
+  description = "Port the proxy-server container listens on."
+  type        = number
+  default     = 8080
+}
+
+variable "proxy_server_cpu" {
+  description = "Fargate CPU units for the proxy-server task (256 = 0.25 vCPU)."
+  type        = number
+  default     = 256
+}
+
+variable "proxy_server_memory" {
+  description = "Fargate memory (MiB) for the proxy-server task."
+  type        = number
+  default     = 512
+}
+
+variable "proxy_server_desired_count" {
+  description = "Number of running proxy-server tasks."
+  type        = number
+  default     = 1
+}
+
+variable "proxy_server_environment" {
+  description = "Plain-text environment variables passed to the proxy-server container (BACKEND_URL is always set)."
+  type        = map(string)
+  default     = {}
+}
+
+variable "ai_agent_image" {
+  description = "Full image URI of the AI agent. Null runs the service with 0 tasks."
+  type        = string
+  default     = null
+}
+
+variable "ai_agent_cpu" {
+  description = "Fargate CPU units for the AI agent task (256 = 0.25 vCPU)."
+  type        = number
+  default     = 512
+}
+
+variable "ai_agent_memory" {
+  description = "Fargate memory (MiB) for the AI agent task."
+  type        = number
+  default     = 1024
+}
+
+variable "ai_agent_desired_count" {
+  description = "Number of running AI agent tasks (ignored while ai_agent_image is null)."
+  type        = number
+  default     = 1
+}
+
+variable "ai_agent_environment" {
+  description = "Plain-text environment variables passed to the AI agent container (PROXY_URL is always set)."
+  type        = map(string)
+  default     = {}
+}
+
+################################################################################
+# Cluster 2: backend-2 in a separate VPC behind its own load balancer
+################################################################################
+
+variable "vpc_2_cidr" {
+  description = "CIDR block of the cluster 2 VPC (should not overlap vpc_cidr, to allow peering later)."
+  type        = string
+  default     = "10.1.0.0/16"
+}
+
+variable "backend_2_certificate_arn" {
+  description = "ACM certificate ARN for the backend-2 load balancer. If set, HTTPS is enabled and HTTP is redirected."
+  type        = string
+  default     = null
+}
+
+variable "backend_2_image_tag" {
+  description = "Tag of the backend-2 image in ECR."
+  type        = string
+  default     = "latest"
+}
+
+variable "backend_2_container_port" {
+  description = "Port the backend-2 container listens on."
+  type        = number
+  default     = 8000
+}
+
+variable "backend_2_cpu" {
+  description = "Fargate CPU units for the backend-2 task (256 = 0.25 vCPU)."
+  type        = number
+  default     = 512
+}
+
+variable "backend_2_memory" {
+  description = "Fargate memory (MiB) for the backend-2 task."
+  type        = number
+  default     = 1024
+}
+
+variable "backend_2_desired_count" {
+  description = "Number of running backend-2 tasks."
+  type        = number
+  default     = 1
+}
+
+variable "backend_2_health_check_path" {
+  description = "Path used by the load balancer to check backend-2 health."
+  type        = string
+  default     = "/health"
+}
+
+variable "backend_2_environment" {
+  description = "Plain-text environment variables passed to the backend-2 container."
+  type        = map(string)
+  default     = {}
+}
+
 ################################################################################
 # GitHub Actions
 ################################################################################
@@ -184,6 +314,8 @@ variable "github_repositories" {
   type = object({
     frontend       = string
     backend        = string
+    proxy_server   = string
+    backend_2      = string
     infrastructure = string
   })
 }
