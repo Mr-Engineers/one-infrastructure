@@ -55,6 +55,32 @@ resource "aws_ssm_parameter" "frontend_env" {
   }
 }
 
+# The AI agent's key for proxy-server (Authorization: Bearer). Only identifies the agent;
+# proxy-server decides what it may do.
+#   aws ssm put-parameter --overwrite --type SecureString \
+#     --name /one/dev/ai-agent/AGENT_KEY --value '...'
+resource "aws_ssm_parameter" "ai_agent_key" {
+  name        = "/${var.project_name}/${var.environment}/ai-agent/AGENT_KEY"
+  description = "AI agent key for proxy-server"
+  type        = "SecureString"
+  value       = "CHANGE_ME"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+resource "aws_ssm_parameter" "proxy_server_database_url" {
+  name        = "/${var.project_name}/${var.environment}/proxy-server/DATABASE_URL"
+  description = "proxy-server Postgres connection string"
+  type        = "SecureString"
+  value       = "CHANGE_ME"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 resource "aws_ssm_parameter" "proxy_server_database_url" {
   name        = "/${var.project_name}/${var.environment}/proxy-server/DATABASE_URL"
   description = "proxy-server Postgres connection string"
@@ -72,7 +98,11 @@ data "aws_iam_policy_document" "ecs_task_execution_secrets" {
     actions = ["ssm:GetParameters"]
     resources = concat(
       [for parameter in aws_ssm_parameter.backend_secret : parameter.arn],
-      [aws_ssm_parameter.gateway_token.arn, aws_ssm_parameter.proxy_server_database_url.arn],
+      [
+        aws_ssm_parameter.gateway_token.arn, aws_ssm_parameter.proxy_server_database_url.arn,
+        aws_ssm_parameter.proxy_server_database_url.arn,
+        aws_ssm_parameter.ai_agent_key.arn,
+      ],
     )
   }
 }

@@ -254,7 +254,7 @@ variable "ai_agent_desired_count" {
 }
 
 variable "ai_agent_environment" {
-  description = "Plain-text environment variables for the AI agent (MARKETPLACE_URL, POLL_INTERVAL_S, ...); override the defaults set in ecs_ai_agent.tf."
+  description = "Plain-text environment variables for the AI agent (POLL_INTERVAL_S, MAX_PARALLEL_SESSIONS, ...); override the defaults set in ecs_ai_agent.tf."
   type        = map(string)
   default     = {}
 }

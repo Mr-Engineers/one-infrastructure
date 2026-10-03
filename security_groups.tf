@@ -101,17 +101,6 @@ resource "aws_vpc_security_group_ingress_rule" "backend_from_proxy_server" {
   to_port                      = var.backend_container_port
 }
 
-# TEMPORARY: the AI agent calls the warehouse directly until proxy-server is ready.
-# Remove together with ai_agent_to_backend.
-resource "aws_vpc_security_group_ingress_rule" "backend_from_ai_agent" {
-  security_group_id            = aws_security_group.backend.id
-  description                  = "TEMPORARY: AI agent direct access until proxy-server is ready"
-  referenced_security_group_id = aws_security_group.ai_agent.id
-  ip_protocol                  = "tcp"
-  from_port                    = var.backend_container_port
-  to_port                      = var.backend_container_port
-}
-
 resource "aws_vpc_security_group_egress_rule" "backend_all" {
   security_group_id = aws_security_group.backend.id
   description       = "All outbound traffic (ECR, CloudWatch, internet via NAT)"
@@ -176,16 +165,6 @@ resource "aws_vpc_security_group_egress_rule" "ai_agent_to_proxy_server" {
   ip_protocol                  = "tcp"
   from_port                    = var.proxy_server_container_port
   to_port                      = var.proxy_server_container_port
-}
-
-# TEMPORARY: see backend_from_ai_agent
-resource "aws_vpc_security_group_egress_rule" "ai_agent_to_backend" {
-  security_group_id            = aws_security_group.ai_agent.id
-  description                  = "TEMPORARY: warehouse (backend) directly until proxy-server is ready"
-  referenced_security_group_id = aws_security_group.backend.id
-  ip_protocol                  = "tcp"
-  from_port                    = var.backend_container_port
-  to_port                      = var.backend_container_port
 }
 
 resource "aws_vpc_security_group_egress_rule" "ai_agent_https" {

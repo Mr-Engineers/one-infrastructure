@@ -1,9 +1,9 @@
 ################################################################################
 # AI agent: long-running worker in cluster 1 (no inbound traffic)
 #
-# Target: every action of the agent goes through proxy-server, which decides what
-# the agent may do. Until proxy-server is ready the agent calls the backend
-# (warehouse) directly - see the TEMPORARY rules in security_groups.tf.
+# Every action of the agent goes through proxy-server, which decides what the agent
+# may do: PROXY_URL/apps/warehouse, PROXY_URL/apps/marketplace. The backend does not
+# accept traffic from the agent (security_groups.tf).
 #
 # LLM: Amazon Bedrock (OpenAI-compatible Chat Completions) with a short-term bearer
 # token signed with the task role credentials - no API keys.
@@ -41,21 +41,27 @@ resource "aws_ecs_task_definition" "ai_agent" {
       image     = local.ai_agent_image
       essential = true
 
-      # TODO: once proxy-server is ready, point the agent at it instead:
-      #   PROXY_URL = local.proxy_server_internal_url, WAREHOUSE_URL = <proxy>/apps/warehouse, ...
       environment = [
         for key, value in merge(
           {
-            AWS_REGION    = var.aws_region
-            LLM_BASE_URL  = "https://bedrock-runtime.${var.aws_region}.amazonaws.com/openai/v1"
-            LLM_MODEL     = var.ai_agent_bedrock_model_id
-            WAREHOUSE_URL = "${local.backend_internal_url}/api/v1"
+            AWS_REGION   = var.aws_region
+            LLM_BASE_URL = "https://bedrock-runtime.${var.aws_region}.amazonaws.com/openai/v1"
+            LLM_MODEL    = var.ai_agent_bedrock_model_id
+            PROXY_URL    = local.proxy_server_internal_url
           },
           var.ai_agent_environment,
           ) : {
           name  = key
           value = value
         }
+      ]
+
+      secrets = [
+        {
+          # Sent to proxy-server as Authorization: Bearer (see ssm.tf)
+          name      = "AGENT_KEY"
+          valueFrom = aws_ssm_parameter.ai_agent_key.arn
+        },
       ]
 
       logConfiguration = {
@@ -88,7 +94,6 @@ resource "aws_ecs_service" "ai_agent" {
   }
 
   # Client-only Service Connect: lets the agent resolve http://proxy-server:<port>
-  # and (temporarily) http://backend:<port>
   service_connect_configuration {
     enabled   = true
     namespace = aws_service_discovery_http_namespace.main.arn
@@ -103,6 +108,5 @@ resource "aws_ecs_service" "ai_agent" {
   depends_on = [
     aws_ecs_cluster_capacity_providers.main,
     aws_ecs_service.proxy_server,
-    aws_ecs_service.backend,
   ]
 }
