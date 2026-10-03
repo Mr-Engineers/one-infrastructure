@@ -101,17 +101,6 @@ resource "aws_vpc_security_group_ingress_rule" "backend_from_proxy_server" {
   to_port                      = var.backend_container_port
 }
 
-# TEMPORARY: the AI agent calls the warehouse directly until proxy-server is ready.
-# Remove together with ai_agent_to_backend.
-resource "aws_vpc_security_group_ingress_rule" "backend_from_ai_agent" {
-  security_group_id            = aws_security_group.backend.id
-  description                  = "TEMPORARY: AI agent direct access until proxy-server is ready"
-  referenced_security_group_id = aws_security_group.ai_agent.id
-  ip_protocol                  = "tcp"
-  from_port                    = var.backend_container_port
-  to_port                      = var.backend_container_port
-}
-
 resource "aws_vpc_security_group_egress_rule" "backend_all" {
   security_group_id = aws_security_group.backend.id
   description       = "All outbound traffic (ECR, CloudWatch, internet via NAT)"
@@ -151,12 +140,12 @@ resource "aws_vpc_security_group_egress_rule" "proxy_server_all" {
 }
 
 ################################################################################
-# AI agent tasks: no inbound traffic. Outbound only to proxy-server and HTTPS.
+# AI agent tasks: no inbound traffic, no internet. Outbound only to proxy-server
+# and the VPC endpoints.
 #
-# The backend does not accept traffic from the agent, so every action has to go
-# through proxy-server. HTTPS (443) is needed for ECR, CloudWatch Logs, the Service
-# Connect control plane and the LLM API. Plain HTTP is blocked, which also keeps the
-# agent away from both public load balancers (they serve HTTP only).
+# Every action of the agent has to go through proxy-server. The VPC endpoints
+# (vpc_endpoints.tf) are only for the platform: image pull, logs, Service Connect.
+# DNS goes to the VPC resolver, which security groups do not filter.
 ################################################################################
 
 resource "aws_security_group" "ai_agent" {
@@ -178,20 +167,19 @@ resource "aws_vpc_security_group_egress_rule" "ai_agent_to_proxy_server" {
   to_port                      = var.proxy_server_container_port
 }
 
-# TEMPORARY: see backend_from_ai_agent
-resource "aws_vpc_security_group_egress_rule" "ai_agent_to_backend" {
+resource "aws_vpc_security_group_egress_rule" "ai_agent_vpc_endpoints" {
   security_group_id            = aws_security_group.ai_agent.id
-  description                  = "TEMPORARY: warehouse (backend) directly until proxy-server is ready"
-  referenced_security_group_id = aws_security_group.backend.id
+  description                  = "HTTPS to interface VPC endpoints: ECR, CloudWatch Logs, ECS"
+  referenced_security_group_id = aws_security_group.vpc_endpoints.id
   ip_protocol                  = "tcp"
-  from_port                    = var.backend_container_port
-  to_port                      = var.backend_container_port
+  from_port                    = 443
+  to_port                      = 443
 }
 
-resource "aws_vpc_security_group_egress_rule" "ai_agent_https" {
+resource "aws_vpc_security_group_egress_rule" "ai_agent_s3" {
   security_group_id = aws_security_group.ai_agent.id
-  description       = "HTTPS: ECR, CloudWatch, Service Connect, LLM API (via NAT)"
-  cidr_ipv4         = "0.0.0.0/0"
+  description       = "HTTPS to the S3 gateway endpoint (ECR image layers only)"
+  prefix_list_id    = aws_vpc_endpoint.s3.prefix_list_id
   ip_protocol       = "tcp"
   from_port         = 443
   to_port           = 443

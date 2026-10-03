@@ -56,32 +56,10 @@ resource "aws_iam_role_policy" "proxy_server_bedrock" {
   policy = data.aws_iam_policy_document.proxy_server_bedrock.json
 }
 
+# No policies: the agent reaches the LLM only through proxy-server
 resource "aws_iam_role" "ai_agent_task" {
   name               = "${local.name_prefix}-ai-agent-task"
   assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
-}
-
-# AI agent: Bedrock inference on the configured model only
-data "aws_iam_policy_document" "ai_agent_bedrock" {
-  statement {
-    sid       = "InvokeModel"
-    actions   = ["bedrock:InvokeModel"]
-    resources = ["arn:aws:bedrock:${var.aws_region}::foundation-model/${var.ai_agent_bedrock_model_id}"]
-  }
-
-  # The agent calls the OpenAI-compatible endpoint with a short-term bearer token
-  # signed with this role's credentials
-  statement {
-    sid       = "CallWithBearerToken"
-    actions   = ["bedrock:CallWithBearerToken"]
-    resources = ["*"]
-  }
-}
-
-resource "aws_iam_role_policy" "ai_agent_bedrock" {
-  name   = "bedrock-inference"
-  role   = aws_iam_role.ai_agent_task.id
-  policy = data.aws_iam_policy_document.ai_agent_bedrock.json
 }
 
 resource "aws_iam_role" "backend_2_task" {

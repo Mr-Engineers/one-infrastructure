@@ -225,7 +225,7 @@ variable "ai_agent_image_tag" {
 }
 
 variable "ai_agent_bedrock_model_id" {
-  description = "Bedrock model the AI agent may invoke (Qwen3 32B is available in-Region in eu-north-1)."
+  description = "Bedrock model the AI agent requests through proxy-server (Qwen3 32B is available in-Region in eu-north-1)."
   type        = string
   default     = "qwen.qwen3-32b-v1:0"
 }

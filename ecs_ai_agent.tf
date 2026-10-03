@@ -1,12 +1,9 @@
 ################################################################################
-# AI agent: long-running worker in cluster 1 (no inbound traffic)
+# AI agent: long-running worker in cluster 1 (no inbound traffic, no internet)
 #
-# Target: every action of the agent goes through proxy-server, which decides what
-# the agent may do. Until proxy-server is ready the agent calls the backend
-# (warehouse) directly - see the TEMPORARY rules in security_groups.tf.
-#
-# LLM: Amazon Bedrock (OpenAI-compatible Chat Completions) with a short-term bearer
-# token signed with the task role credentials - no API keys.
+# Every action of the agent - LLM calls included - goes through proxy-server, which
+# decides what the agent may do. The agent has no network path to the backend and
+# no Bedrock permissions of its own (see security_groups.tf and iam.tf).
 #
 # Image: ECR repository "ai-agent", pushed by the purchasing-agent CI
 # (var.ai_agent_image overrides it).
@@ -41,15 +38,19 @@ resource "aws_ecs_task_definition" "ai_agent" {
       image     = local.ai_agent_image
       essential = true
 
-      # TODO: once proxy-server is ready, point the agent at it instead:
-      #   PROXY_URL = local.proxy_server_internal_url, WAREHOUSE_URL = <proxy>/apps/warehouse, ...
+      # App ids match proxy.apps in the proxy-server database.
+      # TODO: set PROXY_URL (sessions, approvals) once proxy-server serves /v1/sessions.
       environment = [
         for key, value in merge(
           {
-            AWS_REGION    = var.aws_region
-            LLM_BASE_URL  = "https://bedrock-runtime.${var.aws_region}.amazonaws.com/openai/v1"
-            LLM_MODEL     = var.ai_agent_bedrock_model_id
-            WAREHOUSE_URL = "${local.backend_internal_url}/api/v1"
+            AWS_REGION   = var.aws_region
+            LLM_BASE_URL = "${local.proxy_server_internal_url}/v1"
+            LLM_MODEL    = var.ai_agent_bedrock_model_id
+            # Any non-empty value: stops the agent from signing Bedrock tokens itself.
+            # The proxy drops the agent's Authorization header and adds its own credentials.
+            LLM_API_KEY     = "via-proxy"
+            WAREHOUSE_URL   = "${local.proxy_server_internal_url}/apps/warehouse"
+            MARKETPLACE_URL = "${local.proxy_server_internal_url}/apps/marketplace"
           },
           var.ai_agent_environment,
           ) : {
@@ -88,7 +89,6 @@ resource "aws_ecs_service" "ai_agent" {
   }
 
   # Client-only Service Connect: lets the agent resolve http://proxy-server:<port>
-  # and (temporarily) http://backend:<port>
   service_connect_configuration {
     enabled   = true
     namespace = aws_service_discovery_http_namespace.main.arn
@@ -99,10 +99,12 @@ resource "aws_ecs_service" "ai_agent" {
     rollback = true
   }
 
-  # Service Connect clients only see endpoints that exist when their tasks start
+  # Service Connect clients only see endpoints that exist when their tasks start.
+  # Without internet access the agent cannot start before the VPC endpoints exist.
   depends_on = [
     aws_ecs_cluster_capacity_providers.main,
     aws_ecs_service.proxy_server,
-    aws_ecs_service.backend,
+    aws_vpc_endpoint.interface,
+    aws_vpc_endpoint.s3,
   ]
 }

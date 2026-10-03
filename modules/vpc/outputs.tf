@@ -17,3 +17,8 @@ output "nat_public_ips" {
   description = "Public IPs of the NAT Gateways (source address of outbound traffic from private subnets)."
   value       = aws_eip.nat[*].public_ip
 }
+
+output "private_route_table_ids" {
+  description = "IDs of the private route tables."
+  value       = aws_route_table.private[*].id
+}

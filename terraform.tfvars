@@ -74,11 +74,7 @@ github_repositories = {
   frontend       = "one-frontend"
   backend        = "one-backend"
   proxy_server   = "proxy-server"
-<<<<<<< HEAD
   backend_2      = "two-backend"
-=======
-  backend_2      = "one-backend-2"
->>>>>>> 3ea9a8780d22d1780fd6196621471ad21edb0c23
   infrastructure = "one-infrastructure"
   ai_agent       = "purchasing-agent"
 }
