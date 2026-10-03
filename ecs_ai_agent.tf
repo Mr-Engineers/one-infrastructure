@@ -1,12 +1,14 @@
 ################################################################################
-# AI agent: long-running worker in cluster 1 (no inbound traffic, no internet)
+# AI agent: long-running worker in cluster 1 (no inbound traffic)
 #
-# Every action of the agent goes through proxy-server, which decides what the agent
-# may do: PROXY_URL/apps/warehouse, PROXY_URL/apps/marketplace. The backend does not
-# accept traffic from the agent (security_groups.tf).
+# var.ai_agent_mode = "proxy" (default): every action of the agent goes through
+# proxy-server, which decides what the agent may do: PROXY_URL/v1 (LLM),
+# PROXY_URL/apps/warehouse, PROXY_URL/apps/marketplace. No internet, no IAM
+# permissions; the backend does not accept traffic from the agent.
 #
-# LLM: Amazon Bedrock (OpenAI-compatible Chat Completions) with a short-term bearer
-# token signed with the task role credentials - no API keys.
+# var.ai_agent_mode = "direct" (tests): the agent skips the proxy and calls the
+# test-backend (Service Connect), backend-2 (its load balancer) and Bedrock (task role)
+# itself. Security group rules and the Bedrock policy exist only in this mode.
 #
 # Image: ECR repository "ai-agent", pushed by the purchasing-agent CI
 # (var.ai_agent_image overrides it).
@@ -14,6 +16,26 @@
 
 locals {
   ai_agent_image = coalesce(var.ai_agent_image, "${aws_ecr_repository.app["ai-agent"].repository_url}:${var.ai_agent_image_tag}")
+
+  # The agent derives LLM_BASE_URL, WAREHOUSE_URL and MARKETPLACE_URL from PROXY_URL
+  ai_agent_mode_environment = local.ai_agent_direct ? {
+    AGENT_MODE      = "direct"
+    LLM_BASE_URL    = "https://bedrock-runtime.${var.aws_region}.amazonaws.com/openai/v1"
+    WAREHOUSE_URL   = "${local.test_backend_internal_url}/api/v1"
+    MARKETPLACE_URL = local.backend_2_url
+    } : {
+    AGENT_MODE = "proxy"
+    PROXY_URL  = local.proxy_server_internal_url
+  }
+
+  ai_agent_mode_secrets = local.ai_agent_direct ? {
+    # Bearer tokens of the apps themselves (proxy-server adds them in proxy mode)
+    WAREHOUSE_TOKEN   = aws_ssm_parameter.test_backend_gateway_token.arn
+    MARKETPLACE_TOKEN = aws_ssm_parameter.backend_2_secret["MARKETPLACE_API_TOKEN"].arn
+    } : {
+    # Sent to proxy-server as Authorization: Bearer (see ssm.tf)
+    AGENT_KEY = aws_ssm_parameter.ai_agent_key.arn
+  }
 }
 
 resource "aws_cloudwatch_log_group" "ai_agent" {
@@ -44,11 +66,10 @@ resource "aws_ecs_task_definition" "ai_agent" {
       environment = [
         for key, value in merge(
           {
-            AWS_REGION   = var.aws_region
-            LLM_BASE_URL = "https://bedrock-runtime.${var.aws_region}.amazonaws.com/openai/v1"
-            LLM_MODEL    = var.ai_agent_bedrock_model_id
-            PROXY_URL    = local.proxy_server_internal_url
+            AWS_REGION = var.aws_region
+            LLM_MODEL  = var.ai_agent_bedrock_model_id
           },
+          local.ai_agent_mode_environment,
           var.ai_agent_environment,
           ) : {
           name  = key
@@ -57,11 +78,10 @@ resource "aws_ecs_task_definition" "ai_agent" {
       ]
 
       secrets = [
-        {
-          # Sent to proxy-server as Authorization: Bearer (see ssm.tf)
-          name      = "AGENT_KEY"
-          valueFrom = aws_ssm_parameter.ai_agent_key.arn
-        },
+        for name, arn in local.ai_agent_mode_secrets : {
+          name      = name
+          valueFrom = arn
+        }
       ]
 
       logConfiguration = {
@@ -94,6 +114,7 @@ resource "aws_ecs_service" "ai_agent" {
   }
 
   # Client-only Service Connect: lets the agent resolve http://proxy-server:<port>
+  # (and http://test-backend:<port> in direct mode)
   service_connect_configuration {
     enabled   = true
     namespace = aws_service_discovery_http_namespace.main.arn
@@ -109,6 +130,7 @@ resource "aws_ecs_service" "ai_agent" {
   depends_on = [
     aws_ecs_cluster_capacity_providers.main,
     aws_ecs_service.proxy_server,
+    aws_ecs_service.test_backend,
     aws_vpc_endpoint.interface,
     aws_vpc_endpoint.s3,
   ]

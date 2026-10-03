@@ -1,7 +1,7 @@
 ################################################################################
 # Test-backend (test-backend-one): the backend's code against the same Supabase
 # database, but on its own test_* tables (DB_TABLE_PREFIX). Reuses the backend's
-# SUPABASE_URL / SUPABASE_KEY and the gateway token.
+# SUPABASE_URL / SUPABASE_KEY, has its own gateway token.
 ################################################################################
 
 resource "aws_cloudwatch_log_group" "test_backend" {
@@ -64,8 +64,9 @@ resource "aws_ecs_task_definition" "test_backend" {
         ],
         [
           {
+            # Own token, not the backend's (see ssm.tf)
             name      = "GATEWAY_TOKEN"
-            valueFrom = aws_ssm_parameter.gateway_token.arn
+            valueFrom = aws_ssm_parameter.test_backend_gateway_token.arn
           },
         ],
       )

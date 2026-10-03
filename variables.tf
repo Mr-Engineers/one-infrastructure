@@ -294,6 +294,21 @@ variable "ai_agent_desired_count" {
   }
 }
 
+variable "ai_agent_mode" {
+  description = <<-EOT
+    How the AI agent reaches the LLM and the apps (AGENT_MODE):
+    proxy  - only through proxy-server (production setup, agent has no other egress);
+    direct - for tests: Bedrock, the test-backend and backend-2 directly, without the proxy.
+  EOT
+  type        = string
+  default     = "proxy"
+
+  validation {
+    condition     = contains(["proxy", "direct"], var.ai_agent_mode)
+    error_message = "ai_agent_mode must be \"proxy\" or \"direct\"."
+  }
+}
+
 variable "ai_agent_environment" {
   description = "Plain-text environment variables for the AI agent (POLL_INTERVAL_S, MAX_PARALLEL_SESSIONS, ...); override the defaults set in ecs_ai_agent.tf."
   type        = map(string)

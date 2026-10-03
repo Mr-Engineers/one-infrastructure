@@ -61,10 +61,27 @@ resource "aws_iam_role_policy" "proxy_server_bedrock" {
   policy = data.aws_iam_policy_document.proxy_server_bedrock.json
 }
 
-# No policies: the agent reaches the LLM only through proxy-server
+# No policies in proxy mode: the agent reaches the LLM only through proxy-server
 resource "aws_iam_role" "ai_agent_task" {
   name               = "${local.name_prefix}-ai-agent-task"
   assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
+}
+
+# Direct mode only: the agent calls Bedrock itself (in proxy mode proxy-server does)
+resource "aws_iam_role_policy" "ai_agent_bedrock" {
+  count = local.ai_agent_direct ? 1 : 0
+
+  name   = "bedrock-inference"
+  role   = aws_iam_role.ai_agent_task.id
+  policy = data.aws_iam_policy_document.ai_agent_bedrock.json
+}
+
+data "aws_iam_policy_document" "ai_agent_bedrock" {
+  statement {
+    sid       = "InvokeModel"
+    actions   = ["bedrock:InvokeModel"]
+    resources = ["arn:aws:bedrock:${var.aws_region}::foundation-model/${var.ai_agent_bedrock_model_id}"]
+  }
 }
 
 resource "aws_iam_role" "backend_2_task" {

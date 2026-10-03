@@ -12,6 +12,9 @@ locals {
   test_backend_service_connect_name = "test-backend"
   test_backend_internal_url         = "http://${local.test_backend_service_connect_name}:${var.backend_container_port}"
 
+  # AI agent talks to the apps without proxy-server (var.ai_agent_mode = "direct")
+  ai_agent_direct = var.ai_agent_mode == "direct"
+
   proxy_server_service_connect_name = "proxy-server"
   proxy_server_internal_url         = "http://${local.proxy_server_service_connect_name}:${var.proxy_server_container_port}"
 

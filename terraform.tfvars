@@ -63,6 +63,8 @@ ai_agent_image         = null
 ai_agent_cpu           = 512
 ai_agent_memory        = 1024
 ai_agent_desired_count = 1
+# proxy = through proxy-server; direct = test-backend + backend-2 + Bedrock without the proxy (tests)
+ai_agent_mode = "proxy"
 
 # Cluster 2 (separate VPC): backend-2 behind its own public load balancer
 vpc_2_cidr                  = "10.1.0.0/16"

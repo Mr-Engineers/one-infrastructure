@@ -35,6 +35,28 @@ resource "aws_ssm_parameter" "gateway_token" {
   }
 }
 
+# The test-backend's own gateway token. Not the backend's one: in direct mode the AI agent
+# gets it (as WAREHOUSE_TOKEN), and it must not open the production backend.
+#   aws ssm put-parameter --overwrite --type SecureString \
+#     --name /one/dev/test-backend/GATEWAY_TOKEN --value "$(openssl rand -hex 32)"
+resource "aws_ssm_parameter" "test_backend_gateway_token" {
+  name        = "/${var.project_name}/${var.environment}/test-backend/GATEWAY_TOKEN"
+  description = "Gateway token of the test-backend (given to the AI agent in direct mode)"
+  type        = "SecureString"
+  value       = "CHANGE_ME"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+# The parameter was created with put-parameter before the first apply; take it over
+# instead of creating it. A no-op once it is in the state, can be removed then.
+import {
+  to = aws_ssm_parameter.test_backend_gateway_token
+  id = "/${var.project_name}/${var.environment}/test-backend/GATEWAY_TOKEN"
+}
+
 # Frontend build config (VITE_*). Vite inlines these into the JS bundle, so the
 # frontend CI reads them when building the image (--build-arg), not ECS at runtime.
 # Not secret (everything in the bundle is public), hence plain String.
@@ -111,6 +133,7 @@ data "aws_iam_policy_document" "ecs_task_execution_secrets" {
         aws_ssm_parameter.gateway_token.arn, aws_ssm_parameter.proxy_server_database_url.arn,
         aws_ssm_parameter.proxy_server_database_url.arn,
         aws_ssm_parameter.ai_agent_key.arn,
+        aws_ssm_parameter.test_backend_gateway_token.arn,
       ],
     )
   }

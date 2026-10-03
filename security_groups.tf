@@ -140,6 +140,17 @@ resource "aws_vpc_security_group_ingress_rule" "test_backend_from_proxy_server" 
   to_port                      = var.backend_container_port
 }
 
+resource "aws_vpc_security_group_ingress_rule" "test_backend_from_ai_agent" {
+  count = local.ai_agent_direct ? 1 : 0
+
+  security_group_id            = aws_security_group.test_backend.id
+  description                  = "Direct mode: traffic from AI agent tasks"
+  referenced_security_group_id = aws_security_group.ai_agent.id
+  ip_protocol                  = "tcp"
+  from_port                    = var.backend_container_port
+  to_port                      = var.backend_container_port
+}
+
 resource "aws_vpc_security_group_egress_rule" "test_backend_all" {
   security_group_id = aws_security_group.test_backend.id
   description       = "All outbound traffic (ECR, CloudWatch, internet via NAT)"
@@ -180,7 +191,8 @@ resource "aws_vpc_security_group_egress_rule" "proxy_server_all" {
 
 ################################################################################
 # AI agent tasks: no inbound traffic, no internet. Outbound only to proxy-server
-# and the VPC endpoints.
+# and the VPC endpoints (var.ai_agent_mode = "direct" adds the test-backend and
+# HTTPS to the internet, for tests - see the rules below).
 #
 # Every action of the agent has to go through proxy-server. The VPC endpoints
 # (vpc_endpoints.tf) are only for the platform: image pull, logs, Service Connect.
@@ -213,6 +225,41 @@ resource "aws_vpc_security_group_egress_rule" "ai_agent_vpc_endpoints" {
   ip_protocol                  = "tcp"
   from_port                    = 443
   to_port                      = 443
+}
+
+# Direct mode only (tests): the agent skips proxy-server.
+
+resource "aws_vpc_security_group_egress_rule" "ai_agent_to_test_backend" {
+  count = local.ai_agent_direct ? 1 : 0
+
+  security_group_id            = aws_security_group.ai_agent.id
+  description                  = "Direct mode: test-backend"
+  referenced_security_group_id = aws_security_group.test_backend.id
+  ip_protocol                  = "tcp"
+  from_port                    = var.backend_container_port
+  to_port                      = var.backend_container_port
+}
+
+resource "aws_vpc_security_group_egress_rule" "ai_agent_https" {
+  count = local.ai_agent_direct ? 1 : 0
+
+  security_group_id = aws_security_group.ai_agent.id
+  description       = "Direct mode: HTTPS via NAT (Bedrock, backend-2 load balancer)"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "tcp"
+  from_port         = 443
+  to_port           = 443
+}
+
+resource "aws_vpc_security_group_egress_rule" "ai_agent_http" {
+  count = local.ai_agent_direct && !local.backend_2_https_enabled ? 1 : 0
+
+  security_group_id = aws_security_group.ai_agent.id
+  description       = "Direct mode: HTTP via NAT (backend-2 load balancer without a certificate)"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "tcp"
+  from_port         = 80
+  to_port           = 80
 }
 
 resource "aws_vpc_security_group_egress_rule" "ai_agent_s3" {
