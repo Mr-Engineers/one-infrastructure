@@ -1,9 +1,12 @@
 ################################################################################
 # AI agent: long-running worker in cluster 1 (no inbound traffic, no internet)
 #
-# Every action of the agent - LLM calls included - goes through proxy-server, which
-# decides what the agent may do. The agent has no network path to the backend and
-# no Bedrock permissions of its own (see security_groups.tf and iam.tf).
+# Every action of the agent goes through proxy-server, which decides what the agent
+# may do: PROXY_URL/apps/warehouse, PROXY_URL/apps/marketplace. The backend does not
+# accept traffic from the agent (security_groups.tf).
+#
+# LLM: Amazon Bedrock (OpenAI-compatible Chat Completions) with a short-term bearer
+# token signed with the task role credentials - no API keys.
 #
 # Image: ECR repository "ai-agent", pushed by the purchasing-agent CI
 # (var.ai_agent_image overrides it).
@@ -38,25 +41,27 @@ resource "aws_ecs_task_definition" "ai_agent" {
       image     = local.ai_agent_image
       essential = true
 
-      # App ids match proxy.apps in the proxy-server database.
-      # TODO: set PROXY_URL (sessions, approvals) once proxy-server serves /v1/sessions.
       environment = [
         for key, value in merge(
           {
             AWS_REGION   = var.aws_region
-            LLM_BASE_URL = "${local.proxy_server_internal_url}/v1"
+            LLM_BASE_URL = "https://bedrock-runtime.${var.aws_region}.amazonaws.com/openai/v1"
             LLM_MODEL    = var.ai_agent_bedrock_model_id
-            # Any non-empty value: stops the agent from signing Bedrock tokens itself.
-            # The proxy drops the agent's Authorization header and adds its own credentials.
-            LLM_API_KEY     = "via-proxy"
-            WAREHOUSE_URL   = "${local.proxy_server_internal_url}/apps/warehouse"
-            MARKETPLACE_URL = "${local.proxy_server_internal_url}/apps/marketplace"
+            PROXY_URL    = local.proxy_server_internal_url
           },
           var.ai_agent_environment,
           ) : {
           name  = key
           value = value
         }
+      ]
+
+      secrets = [
+        {
+          # Sent to proxy-server as Authorization: Bearer (see ssm.tf)
+          name      = "AGENT_KEY"
+          valueFrom = aws_ssm_parameter.ai_agent_key.arn
+        },
       ]
 
       logConfiguration = {

@@ -64,7 +64,12 @@ backend_2_container_port    = 8000
 backend_2_cpu               = 512
 backend_2_memory            = 1024
 backend_2_desired_count     = 1
-backend_2_health_check_path = "/health"
+backend_2_health_check_path = "/health/live"
+backend_2_environment = {
+  APP_ENV   = "production" # development | test | production ("dev" fails validation)
+  LOG_LEVEL = "INFO"
+}
+backend_2_secret_names = ["MARKETPLACE_API_TOKEN", "MARKETPLACE_ADMIN_TOKEN"]
 
 # GitHub Actions
 github_org    = "Mr-Engineers"

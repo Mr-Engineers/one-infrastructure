@@ -62,6 +62,23 @@ resource "aws_ecs_task_definition" "backend_2" {
         }
       ]
 
+      # Injected from SSM Parameter Store at task start (see ssm.tf)
+      secrets = concat(
+        [
+          # Same Supabase project as the backend in cluster 1
+          for name in ["SUPABASE_URL", "SUPABASE_KEY"] : {
+            name      = name
+            valueFrom = aws_ssm_parameter.backend_secret[name].arn
+          }
+        ],
+        [
+          for name, parameter in aws_ssm_parameter.backend_2_secret : {
+            name      = name
+            valueFrom = parameter.arn
+          }
+        ],
+      )
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {

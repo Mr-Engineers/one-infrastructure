@@ -254,7 +254,7 @@ variable "ai_agent_desired_count" {
 }
 
 variable "ai_agent_environment" {
-  description = "Plain-text environment variables for the AI agent (MARKETPLACE_URL, POLL_INTERVAL_S, ...); override the defaults set in ecs_ai_agent.tf."
+  description = "Plain-text environment variables for the AI agent (POLL_INTERVAL_S, MAX_PARALLEL_SESSIONS, ...); override the defaults set in ecs_ai_agent.tf."
   type        = map(string)
   default     = {}
 }
@@ -315,6 +315,12 @@ variable "backend_2_environment" {
   description = "Plain-text environment variables passed to the backend-2 container."
   type        = map(string)
   default     = {}
+}
+
+variable "backend_2_secret_names" {
+  description = "Names of secret environment variables for backend-2, stored as SecureString parameters in SSM (SUPABASE_URL/KEY come from the backend's parameters)."
+  type        = list(string)
+  default     = ["MARKETPLACE_API_TOKEN", "MARKETPLACE_ADMIN_TOKEN"]
 }
 
 ################################################################################
