@@ -1,17 +1,19 @@
 ################################################################################
 # AI agent: long-running worker in cluster 1 (no inbound traffic)
 #
-# Every action of the agent goes through proxy-server, which decides what the
-# agent may do. The agent can reach neither the backend (security groups) nor the
-# gateway token the backend trusts.
+# Target: every action of the agent goes through proxy-server, which decides what
+# the agent may do. Until proxy-server is ready the agent calls the backend
+# (warehouse) directly - see the TEMPORARY rules in security_groups.tf.
 #
-# No ECR repository / CI yet. Until var.ai_agent_image is set the service is
-# created with 0 tasks and a placeholder image.
+# LLM: Amazon Bedrock (OpenAI-compatible Chat Completions) with a short-term bearer
+# token signed with the task role credentials - no API keys.
+#
+# Image: ECR repository "ai-agent", pushed by the purchasing-agent CI
+# (var.ai_agent_image overrides it).
 ################################################################################
 
 locals {
-  ai_agent_image         = coalesce(var.ai_agent_image, "public.ecr.aws/docker/library/busybox:latest")
-  ai_agent_desired_count = var.ai_agent_image == null ? 0 : var.ai_agent_desired_count
+  ai_agent_image = coalesce(var.ai_agent_image, "${aws_ecr_repository.app["ai-agent"].repository_url}:${var.ai_agent_image_tag}")
 }
 
 resource "aws_cloudwatch_log_group" "ai_agent" {
@@ -39,21 +41,22 @@ resource "aws_ecs_task_definition" "ai_agent" {
       image     = local.ai_agent_image
       essential = true
 
-      environment = concat(
-        [
+      # TODO: once proxy-server is ready, point the agent at it instead:
+      #   PROXY_URL = local.proxy_server_internal_url, WAREHOUSE_URL = <proxy>/apps/warehouse, ...
+      environment = [
+        for key, value in merge(
           {
-            # The only API the agent talks to (via Service Connect)
-            name  = "PROXY_URL"
-            value = local.proxy_server_internal_url
+            AWS_REGION    = var.aws_region
+            LLM_BASE_URL  = "https://bedrock-runtime.${var.aws_region}.amazonaws.com/openai/v1"
+            LLM_MODEL     = var.ai_agent_bedrock_model_id
+            WAREHOUSE_URL = local.backend_internal_url
           },
-        ],
-        [
-          for key, value in var.ai_agent_environment : {
-            name  = key
-            value = value
-          }
-        ],
-      )
+          var.ai_agent_environment,
+          ) : {
+          name  = key
+          value = value
+        }
+      ]
 
       logConfiguration = {
         logDriver = "awslogs"
@@ -71,7 +74,7 @@ resource "aws_ecs_service" "ai_agent" {
   name            = "${local.name_prefix}-ai-agent"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.ai_agent.arn
-  desired_count   = local.ai_agent_desired_count
+  desired_count   = var.ai_agent_desired_count
 
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
@@ -85,6 +88,7 @@ resource "aws_ecs_service" "ai_agent" {
   }
 
   # Client-only Service Connect: lets the agent resolve http://proxy-server:<port>
+  # and (temporarily) http://backend:<port>
   service_connect_configuration {
     enabled   = true
     namespace = aws_service_discovery_http_namespace.main.arn
@@ -99,5 +103,6 @@ resource "aws_ecs_service" "ai_agent" {
   depends_on = [
     aws_ecs_cluster_capacity_providers.main,
     aws_ecs_service.proxy_server,
+    aws_ecs_service.backend,
   ]
 }

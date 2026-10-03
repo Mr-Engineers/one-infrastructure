@@ -49,6 +49,12 @@ locals {
       ecs_service    = aws_ecs_service.backend_2.id
       task_role      = aws_iam_role.backend_2_task.arn
     }
+    ai_agent = {
+      repository     = var.github_repositories.ai_agent
+      ecr_repository = aws_ecr_repository.app["ai-agent"].arn
+      ecs_service    = aws_ecs_service.ai_agent.id
+      task_role      = aws_iam_role.ai_agent_task.arn
+    }
   }
 }
 

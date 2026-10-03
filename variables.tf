@@ -207,9 +207,21 @@ variable "proxy_server_environment" {
 }
 
 variable "ai_agent_image" {
-  description = "Full image URI of the AI agent. Null runs the service with 0 tasks."
+  description = "Full image URI of the AI agent. Null = the ai-agent ECR repository with ai_agent_image_tag."
   type        = string
   default     = null
+}
+
+variable "ai_agent_image_tag" {
+  description = "Tag of the AI agent image in ECR."
+  type        = string
+  default     = "latest"
+}
+
+variable "ai_agent_bedrock_model_id" {
+  description = "Bedrock model the AI agent may invoke (Qwen3 32B is available in-Region in eu-north-1)."
+  type        = string
+  default     = "qwen.qwen3-32b-v1:0"
 }
 
 variable "ai_agent_cpu" {
@@ -225,13 +237,18 @@ variable "ai_agent_memory" {
 }
 
 variable "ai_agent_desired_count" {
-  description = "Number of running AI agent tasks (ignored while ai_agent_image is null)."
+  description = "Number of running AI agent tasks. At most 1: parallel agents would order the same SKUs."
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.ai_agent_desired_count <= 1
+    error_message = "Run at most one AI agent task."
+  }
 }
 
 variable "ai_agent_environment" {
-  description = "Plain-text environment variables passed to the AI agent container (PROXY_URL is always set)."
+  description = "Plain-text environment variables for the AI agent (MARKETPLACE_URL, POLL_INTERVAL_S, ...); override the defaults set in ecs_ai_agent.tf."
   type        = map(string)
   default     = {}
 }
@@ -316,6 +333,7 @@ variable "github_repositories" {
     backend        = string
     proxy_server   = string
     backend_2      = string
+    ai_agent       = optional(string, "purchasing-agent")
     infrastructure = string
   })
 }

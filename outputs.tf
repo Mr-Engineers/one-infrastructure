@@ -99,6 +99,11 @@ output "proxy_server_internal_url" {
   value       = local.proxy_server_internal_url
 }
 
+output "ecr_ai_agent_repository_url" {
+  description = "URL of the AI agent ECR repository."
+  value       = aws_ecr_repository.app["ai-agent"].repository_url
+}
+
 output "ecs_ai_agent_service_name" {
   description = "Name of the AI agent ECS service."
   value       = aws_ecs_service.ai_agent.name
