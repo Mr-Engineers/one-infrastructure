@@ -49,7 +49,7 @@ resource "aws_ecs_task_definition" "ai_agent" {
             AWS_REGION    = var.aws_region
             LLM_BASE_URL  = "https://bedrock-runtime.${var.aws_region}.amazonaws.com/openai/v1"
             LLM_MODEL     = var.ai_agent_bedrock_model_id
-            WAREHOUSE_URL = local.backend_internal_url
+            WAREHOUSE_URL = "${local.backend_internal_url}/api/v1"
           },
           var.ai_agent_environment,
           ) : {
