@@ -55,13 +55,24 @@ resource "aws_ssm_parameter" "frontend_env" {
   }
 }
 
+resource "aws_ssm_parameter" "proxy_server_database_url" {
+  name        = "/${var.project_name}/${var.environment}/proxy-server/DATABASE_URL"
+  description = "proxy-server Postgres connection string"
+  type        = "SecureString"
+  value       = "CHANGE_ME"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 data "aws_iam_policy_document" "ecs_task_execution_secrets" {
   statement {
     sid     = "ReadSecrets"
     actions = ["ssm:GetParameters"]
     resources = concat(
       [for parameter in aws_ssm_parameter.backend_secret : parameter.arn],
-      [aws_ssm_parameter.gateway_token.arn],
+      [aws_ssm_parameter.gateway_token.arn, aws_ssm_parameter.proxy_server_database_url.arn],
     )
   }
 }

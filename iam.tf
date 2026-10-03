@@ -42,6 +42,20 @@ resource "aws_iam_role" "proxy_server_task" {
   assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
 }
 
+data "aws_iam_policy_document" "proxy_server_bedrock" {
+  statement {
+    sid       = "InvokeModel"
+    actions   = ["bedrock:InvokeModel"]
+    resources = [for model_id in var.proxy_server_bedrock_model_ids : "arn:aws:bedrock:${var.aws_region}::foundation-model/${model_id}"]
+  }
+}
+
+resource "aws_iam_role_policy" "proxy_server_bedrock" {
+  name   = "bedrock-inference"
+  role   = aws_iam_role.proxy_server_task.id
+  policy = data.aws_iam_policy_document.proxy_server_bedrock.json
+}
+
 resource "aws_iam_role" "ai_agent_task" {
   name               = "${local.name_prefix}-ai-agent-task"
   assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json

@@ -55,6 +55,10 @@ resource "aws_ecs_task_definition" "proxy_server" {
           name      = "GATEWAY_TOKEN"
           valueFrom = aws_ssm_parameter.gateway_token.arn
         },
+        {
+          name      = "DATABASE_URL"
+          valueFrom = aws_ssm_parameter.proxy_server_database_url.arn
+        },
       ]
 
       logConfiguration = {
