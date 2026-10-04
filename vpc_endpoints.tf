@@ -1,8 +1,9 @@
 ################################################################################
 # Cluster 1 VPC endpoints: AWS APIs without the internet
 #
-# The AI agent has no route to the internet (see security_groups.tf); it reaches
-# ECR, CloudWatch Logs and ECS (Service Connect) only through these endpoints.
+# The proxy AI agent has no route to the internet (see security_groups.tf); it reaches
+# ECR, CloudWatch Logs, SSM (task secrets) and ECS (Service Connect) only through
+# these endpoints.
 # Private DNS makes every task in the VPC use them, the other services included.
 #
 # Interface endpoints live in a single private subnet to keep the cost down
@@ -16,6 +17,7 @@ locals {
     "ecr.api",       # image manifests, auth token
     "ecr.dkr",       # image pull
     "logs",          # awslogs log driver
+    "ssm",           # task secrets (AGENT_KEY) pulled by Fargate at task start
     "ecs",           # Service Connect (Envoy) management:
     "ecs-agent",     #   all three ECS endpoints are required,
     "ecs-telemetry", #   otherwise traffic goes to the public ones
