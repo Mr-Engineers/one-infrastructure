@@ -165,6 +165,36 @@ resource "aws_ssm_parameter" "proxy_server_supabase_jwt_secret" {
   }
 }
 
+# TypeSafe API key used by proxy-server.
+#   aws ssm put-parameter --overwrite --type SecureString \
+#     --name /one/dev/proxy/TYPESAFE_API_KEY --value '...'
+resource "aws_ssm_parameter" "proxy_server_typesafe_api_key" {
+  name        = "/${var.project_name}/${var.environment}/proxy/TYPESAFE_API_KEY"
+  description = "TypeSafe API key used by proxy-server"
+  type        = "SecureString"
+  value       = "CHANGE_ME"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+# Postgres of the dispute-ops apps (Shopping-Warehouse Supabase project, session pooler 5432):
+# case-desk (schema dispute_case_desk), case-desk-test (dispute_case_desk_test) and
+# card-network (dispute_network). Their MCP_API_KEY reuses existing tokens (ecs_case_desk.tf,
+# ecs_card_network.tf).
+#   aws ssm put-parameter --overwrite --type SecureString \
+#     --name /one/dev/dispute/DATABASE_URL --value 'postgresql://postgres.<ref>:<password>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres'
+resource "aws_ssm_parameter" "dispute_database_url" {
+  name        = "/${var.project_name}/${var.environment}/dispute/DATABASE_URL"
+  description = "Postgres connection string of case-desk, case-desk-test and card-network"
+  type        = "SecureString"
+  value       = "CHANGE_ME"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
 
 data "aws_iam_policy_document" "ecs_task_execution_secrets" {
   statement {
@@ -177,9 +207,11 @@ data "aws_iam_policy_document" "ecs_task_execution_secrets" {
         aws_ssm_parameter.gateway_token.arn, aws_ssm_parameter.proxy_server_database_url.arn,
         aws_ssm_parameter.proxy_server_supabase_url.arn,
         aws_ssm_parameter.proxy_server_supabase_jwt_secret.arn,
+        aws_ssm_parameter.proxy_server_typesafe_api_key.arn,
         aws_ssm_parameter.ai_agent_key.arn,
         aws_ssm_parameter.test_backend_gateway_token.arn,
         aws_ssm_parameter.frontend_api_proxy_target.arn,
+        aws_ssm_parameter.dispute_database_url.arn,
       ],
     )
   }

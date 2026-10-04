@@ -167,6 +167,41 @@ output "backend_2_url" {
   value       = local.backend_2_url
 }
 
+output "ecr_case_desk_repository_urls" {
+  description = "URLs of the case-desk ECR repositories, keyed by prod (case-desk-agent) / test (case-desk-agent-test)."
+  value       = { for key, case_desk in local.case_desks : key => aws_ecr_repository.app[case_desk.ecr_repository].repository_url }
+}
+
+output "ecs_case_desk_service_names" {
+  description = "Names of the case-desk ECS services (cluster 1), keyed by prod / test."
+  value       = { for key, service in aws_ecs_service.case_desk : key => service.name }
+}
+
+output "case_desk_internal_urls" {
+  description = "Addresses of the case-desk services inside cluster 1 (Service Connect); prod is the upstream of proxy-server app case_desk."
+  value       = local.case_desk_internal_urls
+}
+
+output "case_desk_test_dns_url" {
+  description = "Address of case-desk-test through Cloud Map DNS, for one-off tasks (direct agent)."
+  value       = local.case_desk_test_dns_url
+}
+
+output "ecr_card_network_repository_url" {
+  description = "URL of the card-network ECR repository."
+  value       = aws_ecr_repository.app["card-network"].repository_url
+}
+
+output "ecs_card_network_service_name" {
+  description = "Name of the card-network ECS service (in cluster 2)."
+  value       = aws_ecs_service.card_network.name
+}
+
+output "card_network_url" {
+  description = "Public URL of card-network (backend-2 load balancer, own port); upstream of proxy-server app card_network."
+  value       = local.card_network_url
+}
+
 ################################################################################
 # GitHub Actions
 ################################################################################

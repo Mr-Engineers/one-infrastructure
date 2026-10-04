@@ -70,6 +70,20 @@ ai_agent_memory = 1024
 #          backend-2 + Bedrock without the proxy (tests)
 ai_agent_desired_count = 1
 
+# Case Desk: prod = case-desk-agent (through proxy-server), test = case-desk-agent-test
+# (direct, own schema dispute_case_desk_test in the same database)
+case_desk_image_tag      = "latest"
+case_desk_container_port = 4102
+case_desk_cpu            = 256
+case_desk_memory         = 512
+case_desk_desired_counts = {
+  prod = 1
+  test = 1
+}
+case_desk_environment = {
+  DEMO_SEED = "dispute_v1"
+}
+
 # Cluster 2 (separate VPC): backend-2 behind its own public load balancer
 vpc_2_cidr                  = "10.1.0.0/16"
 backend_2_certificate_arn   = "arn:aws:acm:eu-north-1:206135621036:certificate/ce222c82-296d-481c-b69c-9b821ec5c734"
@@ -85,6 +99,19 @@ backend_2_environment = {
 }
 backend_2_secret_names = ["MARKETPLACE_API_TOKEN", "MARKETPLACE_ADMIN_TOKEN"]
 
+# Card network (card-network-agent, Network Portal) in cluster 2, public on the backend-2
+# load balancer: https://<alb-2>:8443 (same certificate as backend-2)
+card_network_image_tag      = "latest"
+card_network_container_port = 4101
+card_network_public_port    = 8443
+card_network_public_cidrs   = ["0.0.0.0/0"]
+card_network_cpu            = 256
+card_network_memory         = 512
+card_network_desired_count  = 1
+card_network_environment = {
+  DEMO_SEED = "dispute_v1"
+}
+
 # GitHub Actions
 github_org    = "Mr-Engineers"
 github_org_id = 206612647
@@ -98,6 +125,9 @@ github_repositories = {
   ai_agent        = "purchasing-agent"
   ai_agent_direct = "purchasing-agent-test"
   test_backend    = "test-backend-one"
+  case_desk       = "case-desk-agent"
+  case_desk_test  = "case-desk-agent-test"
+  card_network    = "card-network-agent"
 }
 
 github_deploy_branches = ["main", "feature/cicd"]

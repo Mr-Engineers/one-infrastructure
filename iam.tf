@@ -102,3 +102,16 @@ resource "aws_iam_role" "backend_2_task" {
   name               = "${local.name_prefix}-backend-2-task"
   assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
 }
+
+# Case Desk (prod / test) and card-network: no AWS permissions, only Postgres
+resource "aws_iam_role" "case_desk_task" {
+  for_each = local.case_desks
+
+  name               = "${local.name_prefix}-${each.value.name}-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
+}
+
+resource "aws_iam_role" "card_network_task" {
+  name               = "${local.name_prefix}-card-network-task"
+  assume_role_policy = data.aws_iam_policy_document.ecs_tasks_assume_role.json
+}

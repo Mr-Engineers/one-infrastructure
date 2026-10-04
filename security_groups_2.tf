@@ -68,3 +68,53 @@ resource "aws_vpc_security_group_egress_rule" "backend_2_all" {
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
 }
+
+################################################################################
+# Card network (ecs_card_network.tf): its own port on the cluster 2 load balancer
+################################################################################
+
+resource "aws_vpc_security_group_ingress_rule" "backend_2_alb_card_network" {
+  for_each = toset(var.card_network_public_cidrs)
+
+  security_group_id = aws_security_group.backend_2_alb.id
+  description       = "Card-network from the internet"
+  cidr_ipv4         = each.value
+  ip_protocol       = "tcp"
+  from_port         = var.card_network_public_port
+  to_port           = var.card_network_public_port
+}
+
+resource "aws_vpc_security_group_egress_rule" "backend_2_alb_to_card_network" {
+  security_group_id            = aws_security_group.backend_2_alb.id
+  description                  = "Traffic to card-network tasks"
+  referenced_security_group_id = aws_security_group.card_network.id
+  ip_protocol                  = "tcp"
+  from_port                    = var.card_network_container_port
+  to_port                      = var.card_network_container_port
+}
+
+resource "aws_security_group" "card_network" {
+  name        = "${local.name_prefix_2}-card-network-sg"
+  description = "Card-network ECS tasks"
+  vpc_id      = module.vpc_2.vpc_id
+
+  tags = {
+    Name = "${local.name_prefix_2}-card-network-sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "card_network_from_alb" {
+  security_group_id            = aws_security_group.card_network.id
+  description                  = "Traffic from the load balancer"
+  referenced_security_group_id = aws_security_group.backend_2_alb.id
+  ip_protocol                  = "tcp"
+  from_port                    = var.card_network_container_port
+  to_port                      = var.card_network_container_port
+}
+
+resource "aws_vpc_security_group_egress_rule" "card_network_all" {
+  security_group_id = aws_security_group.card_network.id
+  description       = "All outbound traffic (Supabase Postgres, ECR, CloudWatch, internet via NAT)"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}

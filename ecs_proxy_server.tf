@@ -74,6 +74,10 @@ resource "aws_ecs_task_definition" "proxy_server" {
           name      = "SUPABASE_JWT_SECRET"
           valueFrom = aws_ssm_parameter.proxy_server_supabase_jwt_secret.arn
         },
+        {
+          name      = "TYPESAFE_API_KEY"
+          valueFrom = aws_ssm_parameter.proxy_server_typesafe_api_key.arn
+        },
       ]
 
       logConfiguration = {

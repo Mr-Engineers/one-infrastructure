@@ -1,5 +1,5 @@
 locals {
-  ecr_repositories = toset(["frontend", "backend", "proxy-server", "backend-2", "ai-agent", "ai-agent-direct", "test-backend"])
+  ecr_repositories = toset(["frontend", "backend", "proxy-server", "backend-2", "ai-agent", "ai-agent-direct", "test-backend", "case-desk", "case-desk-test", "card-network"])
 }
 
 resource "aws_ecr_repository" "app" {

@@ -328,6 +328,48 @@ variable "ai_agent_mode_environment" {
   }
 }
 
+variable "case_desk_image_tag" {
+  description = "Tag of the case-desk and case-desk-test images in ECR."
+  type        = string
+  default     = "latest"
+}
+
+variable "case_desk_container_port" {
+  description = "Port the case-desk containers listen on (CASE_DESK_MCP_PORT)."
+  type        = number
+  default     = 4102
+}
+
+variable "case_desk_cpu" {
+  description = "Fargate CPU units for each case-desk task (256 = 0.25 vCPU)."
+  type        = number
+  default     = 256
+}
+
+variable "case_desk_memory" {
+  description = "Fargate memory (MiB) for each case-desk task."
+  type        = number
+  default     = 512
+}
+
+variable "case_desk_desired_counts" {
+  description = "Number of running tasks per case-desk service: prod (case-desk-agent, through proxy-server), test (case-desk-agent-test, direct)."
+  type = object({
+    prod = number
+    test = number
+  })
+  default = {
+    prod = 1
+    test = 1
+  }
+}
+
+variable "case_desk_environment" {
+  description = "Plain-text environment variables for both case-desk containers (DEMO_SEED, ...)."
+  type        = map(string)
+  default     = {}
+}
+
 ################################################################################
 # Cluster 2: backend-2 in a separate VPC behind its own load balancer
 ################################################################################
@@ -392,6 +434,54 @@ variable "backend_2_secret_names" {
   default     = ["MARKETPLACE_API_TOKEN", "MARKETPLACE_ADMIN_TOKEN"]
 }
 
+variable "card_network_image_tag" {
+  description = "Tag of the card-network image in ECR."
+  type        = string
+  default     = "latest"
+}
+
+variable "card_network_container_port" {
+  description = "Port the card-network container listens on (NETWORK_MCP_PORT)."
+  type        = number
+  default     = 4101
+}
+
+variable "card_network_public_port" {
+  description = "Port of the backend-2 load balancer that exposes card-network (HTTPS when backend_2_certificate_arn is set)."
+  type        = number
+  default     = 8443
+}
+
+variable "card_network_public_cidrs" {
+  description = "IPv4 CIDRs allowed to reach card-network through the backend-2 load balancer. Empty = port closed."
+  type        = list(string)
+  default     = ["0.0.0.0/0"]
+}
+
+variable "card_network_cpu" {
+  description = "Fargate CPU units for the card-network task (256 = 0.25 vCPU)."
+  type        = number
+  default     = 256
+}
+
+variable "card_network_memory" {
+  description = "Fargate memory (MiB) for the card-network task."
+  type        = number
+  default     = 512
+}
+
+variable "card_network_desired_count" {
+  description = "Number of running card-network tasks."
+  type        = number
+  default     = 1
+}
+
+variable "card_network_environment" {
+  description = "Plain-text environment variables for the card-network container (DEMO_SEED, ...)."
+  type        = map(string)
+  default     = {}
+}
+
 ################################################################################
 # GitHub Actions
 ################################################################################
@@ -417,6 +507,9 @@ variable "github_repositories" {
     ai_agent        = string
     ai_agent_direct = string
     test_backend    = string
+    case_desk       = string
+    case_desk_test  = string
+    card_network    = string
     infrastructure  = string
   })
 }

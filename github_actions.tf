@@ -43,6 +43,24 @@ locals {
       ecs_services   = [aws_ecs_service.test_backend.id]
       task_roles     = [aws_iam_role.test_backend_task.arn]
     }
+    case_desk = {
+      repository     = var.github_repositories.case_desk
+      ecr_repository = aws_ecr_repository.app["case-desk"].arn
+      ecs_services   = [aws_ecs_service.case_desk["prod"].id]
+      task_roles     = [aws_iam_role.case_desk_task["prod"].arn]
+    }
+    case_desk_test = {
+      repository     = var.github_repositories.case_desk_test
+      ecr_repository = aws_ecr_repository.app["case-desk-test"].arn
+      ecs_services   = [aws_ecs_service.case_desk["test"].id]
+      task_roles     = [aws_iam_role.case_desk_task["test"].arn]
+    }
+    card_network = {
+      repository     = var.github_repositories.card_network
+      ecr_repository = aws_ecr_repository.app["card-network"].arn
+      ecs_services   = [aws_ecs_service.card_network.id]
+      task_roles     = [aws_iam_role.card_network_task.arn]
+    }
     proxy_server = {
       repository     = var.github_repositories.proxy_server
       ecr_repository = aws_ecr_repository.app["proxy-server"].arn

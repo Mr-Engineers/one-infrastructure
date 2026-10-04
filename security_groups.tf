@@ -329,3 +329,40 @@ resource "aws_vpc_security_group_egress_rule" "ai_agent_http" {
   from_port         = 80
   to_port           = 80
 }
+
+################################################################################
+# Case Desk tasks (ecs_case_desk.tf): reachable from proxy-server. The direct agent of
+# the dispute use case gets its own ingress rule to the test copy when it is added.
+################################################################################
+
+resource "aws_security_group" "case_desk" {
+  for_each = local.case_desks
+
+  name        = "${local.name_prefix}-${each.value.name}-sg"
+  description = "Case Desk ECS tasks (${each.value.app_name})"
+  vpc_id      = module.vpc_main.vpc_id
+
+  tags = {
+    Name = "${local.name_prefix}-${each.value.name}-sg"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "case_desk_from_proxy_server" {
+  for_each = aws_security_group.case_desk
+
+  security_group_id            = each.value.id
+  description                  = "Traffic from proxy-server tasks"
+  referenced_security_group_id = aws_security_group.proxy_server.id
+  ip_protocol                  = "tcp"
+  from_port                    = var.case_desk_container_port
+  to_port                      = var.case_desk_container_port
+}
+
+resource "aws_vpc_security_group_egress_rule" "case_desk_all" {
+  for_each = aws_security_group.case_desk
+
+  security_group_id = each.value.id
+  description       = "All outbound traffic (Supabase Postgres, ECR, CloudWatch, internet via NAT)"
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
+}
