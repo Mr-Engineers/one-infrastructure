@@ -59,6 +59,11 @@ resource "aws_ecs_task_definition" "proxy_server" {
           name      = "DATABASE_URL"
           valueFrom = aws_ssm_parameter.proxy_server_database_url.arn
         },
+        {
+          # Same token the marketplace (backend-2) expects as Bearer
+          name      = "MARKETPLACE_API_TOKEN"
+          valueFrom = aws_ssm_parameter.backend_2_secret["MARKETPLACE_API_TOKEN"].arn
+        },
       ]
 
       logConfiguration = {
