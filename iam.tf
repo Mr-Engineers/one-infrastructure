@@ -88,6 +88,14 @@ data "aws_iam_policy_document" "ai_agent_bedrock" {
     actions   = ["bedrock:InvokeModel"]
     resources = ["arn:aws:bedrock:${var.aws_region}::foundation-model/${var.ai_agent_bedrock_model_id}"]
   }
+
+  # The OpenAI-compatible endpoint (/openai/v1) is called with a short-term bearer token
+  # generated from the task role. The action has no resource-level permissions.
+  statement {
+    sid       = "CallWithBearerToken"
+    actions   = ["bedrock:CallWithBearerToken"]
+    resources = ["*"]
+  }
 }
 
 resource "aws_iam_role" "backend_2_task" {
