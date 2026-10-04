@@ -30,6 +30,26 @@ resource "aws_vpc_security_group_ingress_rule" "alb_https" {
   to_port           = 443
 }
 
+resource "aws_vpc_security_group_ingress_rule" "alb_proxy_server" {
+  for_each = toset(var.proxy_server_public_cidrs)
+
+  security_group_id = aws_security_group.alb.id
+  description       = "Proxy-server from the internet (testing)"
+  cidr_ipv4         = each.value
+  ip_protocol       = "tcp"
+  from_port         = var.proxy_server_public_port
+  to_port           = var.proxy_server_public_port
+}
+
+resource "aws_vpc_security_group_egress_rule" "alb_to_proxy_server" {
+  security_group_id            = aws_security_group.alb.id
+  description                  = "Traffic to proxy-server tasks"
+  referenced_security_group_id = aws_security_group.proxy_server.id
+  ip_protocol                  = "tcp"
+  from_port                    = var.proxy_server_container_port
+  to_port                      = var.proxy_server_container_port
+}
+
 resource "aws_vpc_security_group_egress_rule" "alb_to_frontend" {
   security_group_id            = aws_security_group.alb.id
   description                  = "Traffic to frontend tasks"
@@ -159,8 +179,8 @@ resource "aws_vpc_security_group_egress_rule" "test_backend_all" {
 }
 
 ################################################################################
-# Proxy-server tasks: the AI agent's gateway to the backend, reachable only from
-# AI agent tasks
+# Proxy-server tasks: the AI agent's gateway to the backend, reachable from
+# AI agent tasks and (for testing) from the load balancer
 ################################################################################
 
 resource "aws_security_group" "proxy_server" {
@@ -177,6 +197,15 @@ resource "aws_vpc_security_group_ingress_rule" "proxy_server_from_ai_agent" {
   security_group_id            = aws_security_group.proxy_server.id
   description                  = "Traffic from AI agent tasks"
   referenced_security_group_id = aws_security_group.ai_agent.id
+  ip_protocol                  = "tcp"
+  from_port                    = var.proxy_server_container_port
+  to_port                      = var.proxy_server_container_port
+}
+
+resource "aws_vpc_security_group_ingress_rule" "proxy_server_from_alb" {
+  security_group_id            = aws_security_group.proxy_server.id
+  description                  = "Traffic from the load balancer (testing)"
+  referenced_security_group_id = aws_security_group.alb.id
   ip_protocol                  = "tcp"
   from_port                    = var.proxy_server_container_port
   to_port                      = var.proxy_server_container_port

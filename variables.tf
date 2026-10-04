@@ -241,6 +241,18 @@ variable "proxy_server_desired_count" {
   default     = 1
 }
 
+variable "proxy_server_public_port" {
+  description = "Load balancer port that exposes proxy-server to the internet (HTTPS when certificate_arn is set)."
+  type        = number
+  default     = 8443
+}
+
+variable "proxy_server_public_cidrs" {
+  description = "IPv4 CIDRs allowed to reach proxy-server through the load balancer. Empty = port closed."
+  type        = list(string)
+  default     = []
+}
+
 variable "proxy_server_environment" {
   description = "Plain-text environment variables passed to the proxy-server container (BACKEND_URL is always set)."
   type        = map(string)

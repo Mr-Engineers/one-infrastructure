@@ -95,6 +95,13 @@ resource "aws_ecs_service" "proxy_server" {
     assign_public_ip = false
   }
 
+  # Public access for testing (alb.tf, listener on var.proxy_server_public_port)
+  load_balancer {
+    target_group_arn = aws_lb_target_group.proxy_server.arn
+    container_name   = "proxy-server"
+    container_port   = var.proxy_server_container_port
+  }
+
   # Resolves http://backend:<port> and registers the proxy as http://proxy-server:<port>
   service_connect_configuration {
     enabled   = true
@@ -129,5 +136,6 @@ resource "aws_ecs_service" "proxy_server" {
   depends_on = [
     aws_ecs_cluster_capacity_providers.main,
     aws_ecs_service.backend,
+    aws_lb_listener.proxy_server,
   ]
 }

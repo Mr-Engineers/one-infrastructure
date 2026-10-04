@@ -57,6 +57,9 @@ proxy_server_container_port = 8080
 proxy_server_cpu            = 256
 proxy_server_memory         = 512
 proxy_server_desired_count  = 1
+# Public access for testing: https://<alb>:8443 (narrow to your IP/32 if possible)
+proxy_server_public_port  = 8443
+proxy_server_public_cidrs = ["0.0.0.0/0"]
 
 # AI agent (null image = one-dev-ai-agent ECR repository, pushed by purchasing-agent CI)
 ai_agent_image         = null

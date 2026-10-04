@@ -99,6 +99,11 @@ output "proxy_server_internal_url" {
   value       = local.proxy_server_internal_url
 }
 
+output "proxy_server_public_url" {
+  description = "Public address of the proxy-server (testing)."
+  value       = "${local.https_enabled ? "https" : "http"}://${aws_lb.main.dns_name}:${var.proxy_server_public_port}"
+}
+
 output "ecr_test_backend_repository_url" {
   description = "URL of the test-backend ECR repository."
   value       = aws_ecr_repository.app["test-backend"].repository_url

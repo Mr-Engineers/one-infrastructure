@@ -83,3 +83,50 @@ resource "aws_lb_listener" "https" {
     target_group_arn = aws_lb_target_group.frontend.arn
   }
 }
+
+################################################################################
+# Proxy-server on its own port (testing): the frontend already owns /api/ on 443
+# and there is no custom domain for host-based routing.
+################################################################################
+
+resource "aws_lb_target_group" "proxy_server" {
+  name        = "${local.name_prefix}-proxy-${var.proxy_server_container_port}"
+  port        = var.proxy_server_container_port
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = module.vpc_main.vpc_id
+
+  deregistration_delay = 30
+
+  health_check {
+    enabled             = true
+    path                = "/health"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+  }
+
+  tags = {
+    Name = "${local.name_prefix}-proxy-tg"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Same certificate as 443 (it covers the ALB's DNS name, not a port)
+resource "aws_lb_listener" "proxy_server" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = var.proxy_server_public_port
+  protocol          = local.https_enabled ? "HTTPS" : "HTTP"
+  ssl_policy        = local.https_enabled ? "ELBSecurityPolicy-TLS13-1-2-2021-06" : null
+  certificate_arn   = var.certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.proxy_server.arn
+  }
+}
