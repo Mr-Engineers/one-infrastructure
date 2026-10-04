@@ -120,8 +120,13 @@ output "test_backend_internal_url" {
 }
 
 output "ecr_ai_agent_repository_url" {
-  description = "URL of the AI agent ECR repository."
+  description = "URL of the proxy AI agent ECR repository (purchasing-agent)."
   value       = aws_ecr_repository.app["ai-agent"].repository_url
+}
+
+output "ecr_ai_agent_direct_repository_url" {
+  description = "URL of the direct AI agent ECR repository (purchasing-agent-test)."
+  value       = aws_ecr_repository.app["ai-agent-direct"].repository_url
 }
 
 output "ecs_ai_agent_service_names" {

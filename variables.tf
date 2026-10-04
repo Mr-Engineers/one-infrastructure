@@ -265,10 +265,15 @@ variable "proxy_server_bedrock_model_ids" {
   default     = ["qwen.qwen3-32b-v1:0"]
 }
 
-variable "ai_agent_image" {
-  description = "Full image URI of the AI agent. Null = the ai-agent ECR repository with ai_agent_image_tag."
-  type        = string
-  default     = null
+variable "ai_agent_images" {
+  description = "Full image URIs of the AI agents, keyed by mode (proxy, direct). Missing = the agent's ECR repository (ai-agent / ai-agent-direct) with ai_agent_image_tag."
+  type        = map(string)
+  default     = {}
+
+  validation {
+    condition     = alltrue([for mode in keys(var.ai_agent_images) : contains(["proxy", "direct"], mode)])
+    error_message = "ai_agent_images keys must be \"proxy\" or \"direct\"."
+  }
 }
 
 variable "ai_agent_image_tag" {
@@ -411,13 +416,14 @@ variable "github_org_id" {
 variable "github_repositories" {
   description = "Names of the GitHub repositories allowed to assume the CI/CD roles."
   type = object({
-    frontend       = string
-    backend        = string
-    proxy_server   = string
-    backend_2      = string
-    ai_agent       = string
-    test_backend   = string
-    infrastructure = string
+    frontend        = string
+    backend         = string
+    proxy_server    = string
+    backend_2       = string
+    ai_agent        = string
+    ai_agent_direct = string
+    test_backend    = string
+    infrastructure  = string
   })
 }
 

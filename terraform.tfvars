@@ -61,8 +61,8 @@ proxy_server_desired_count  = 1
 proxy_server_public_port  = 8443
 proxy_server_public_cidrs = ["0.0.0.0/0"]
 
-# AI agent (null image = one-dev-ai-agent ECR repository, pushed by purchasing-agent CI)
-ai_agent_image  = null
+# AI agents: proxy = one-dev-ai-agent ECR (purchasing-agent CI),
+# direct = one-dev-ai-agent-direct ECR (purchasing-agent-test CI)
 ai_agent_cpu    = 512
 ai_agent_memory = 1024
 # proxy  = one-dev-ai-agent, everything through proxy-server
@@ -92,13 +92,14 @@ github_org    = "Mr-Engineers"
 github_org_id = 206612647
 
 github_repositories = {
-  frontend       = "one-frontend"
-  backend        = "one-backend"
-  proxy_server   = "proxy-server"
-  backend_2      = "two-backend"
-  infrastructure = "one-infrastructure"
-  ai_agent       = "purchasing-agent"
-  test_backend   = "test-backend-one"
+  frontend        = "one-frontend"
+  backend         = "one-backend"
+  proxy_server    = "proxy-server"
+  backend_2       = "two-backend"
+  infrastructure  = "one-infrastructure"
+  ai_agent        = "purchasing-agent"
+  ai_agent_direct = "purchasing-agent-test"
+  test_backend    = "test-backend-one"
 }
 
 github_deploy_branches = ["main", "feature/cicd"]

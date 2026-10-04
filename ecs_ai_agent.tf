@@ -11,17 +11,18 @@
 # test-backend (Service Connect), backend-2 (its load balancer) and Bedrock (task role)
 # itself. The extra security group rules and the Bedrock policy apply only to it.
 #
-# Image: ECR repository "ai-agent", pushed by the purchasing-agent CI
-# (var.ai_agent_image overrides it).
+# Images: each agent has its own ECR repository and repository with the code:
+#   proxy  -> ECR "ai-agent",        pushed by the purchasing-agent CI
+#   direct -> ECR "ai-agent-direct", pushed by the purchasing-agent-test CI
+# (var.ai_agent_images overrides them per mode).
 ################################################################################
 
 locals {
-  ai_agent_image = coalesce(var.ai_agent_image, "${aws_ecr_repository.app["ai-agent"].repository_url}:${var.ai_agent_image_tag}")
-
   # Key = AGENT_MODE. name_suffix keeps the proxy agent's original resource names.
   ai_agents = {
     proxy = {
-      name_suffix = ""
+      name_suffix    = ""
+      ecr_repository = "ai-agent"
       # The agent derives LLM_BASE_URL, WAREHOUSE_URL and MARKETPLACE_URL from PROXY_URL
       environment = {
         AGENT_MODE = "proxy"
@@ -33,7 +34,8 @@ locals {
       }
     }
     direct = {
-      name_suffix = "-direct"
+      name_suffix    = "-direct"
+      ecr_repository = "ai-agent-direct"
       environment = {
         AGENT_MODE      = "direct"
         LLM_BASE_URL    = "https://bedrock-runtime.${var.aws_region}.amazonaws.com/openai/v1"
@@ -46,6 +48,13 @@ locals {
         MARKETPLACE_TOKEN = aws_ssm_parameter.backend_2_secret["MARKETPLACE_API_TOKEN"].arn
       }
     }
+  }
+
+  ai_agent_images = {
+    for mode, agent in local.ai_agents : mode => coalesce(
+      lookup(var.ai_agent_images, mode, null),
+      "${aws_ecr_repository.app[agent.ecr_repository].repository_url}:${var.ai_agent_image_tag}",
+    )
   }
 }
 
@@ -75,7 +84,7 @@ resource "aws_ecs_task_definition" "ai_agent" {
   container_definitions = jsonencode([
     {
       name      = "ai-agent"
-      image     = local.ai_agent_image
+      image     = local.ai_agent_images[each.key]
       essential = true
 
       environment = [

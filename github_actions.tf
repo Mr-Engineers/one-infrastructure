@@ -55,12 +55,18 @@ locals {
       ecs_services   = [aws_ecs_service.backend_2.id]
       task_roles     = [aws_iam_role.backend_2_task.arn]
     }
+    # Each agent is deployed from its own repository (see ecs_ai_agent.tf)
     ai_agent = {
       repository     = var.github_repositories.ai_agent
       ecr_repository = aws_ecr_repository.app["ai-agent"].arn
-      # One image, two services (proxy and direct, see ecs_ai_agent.tf)
-      ecs_services = [for service in aws_ecs_service.ai_agent : service.id]
-      task_roles   = [for role in aws_iam_role.ai_agent_task : role.arn]
+      ecs_services   = [aws_ecs_service.ai_agent["proxy"].id]
+      task_roles     = [aws_iam_role.ai_agent_task["proxy"].arn]
+    }
+    ai_agent_direct = {
+      repository     = var.github_repositories.ai_agent_direct
+      ecr_repository = aws_ecr_repository.app["ai-agent-direct"].arn
+      ecs_services   = [aws_ecs_service.ai_agent["direct"].id]
+      task_roles     = [aws_iam_role.ai_agent_task["direct"].arn]
     }
   }
 }
