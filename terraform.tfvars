@@ -65,12 +65,10 @@ proxy_server_public_cidrs = ["0.0.0.0/0"]
 # direct = one-dev-ai-agent-direct ECR (purchasing-agent-test CI)
 ai_agent_cpu    = 512
 ai_agent_memory = 1024
-# proxy  = one-dev-ai-agent, everything through proxy-server
-# direct = one-dev-ai-agent-direct, test-backend + backend-2 + Bedrock without the proxy (tests)
-ai_agent_desired_counts = {
-  proxy  = 1
-  direct = 1
-}
+# proxy  = one-dev-ai-agent service, everything through proxy-server
+# direct = one-dev-ai-agent-direct one-off task (run-task, no service): test-backend +
+#          backend-2 + Bedrock without the proxy (tests)
+ai_agent_desired_count = 1
 
 # Cluster 2 (separate VPC): backend-2 behind its own public load balancer
 vpc_2_cidr                  = "10.1.0.0/16"

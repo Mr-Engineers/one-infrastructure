@@ -27,3 +27,12 @@ resource "aws_service_discovery_http_namespace" "main" {
   name        = "${local.name_prefix}.local"
   description = "Service Connect namespace for ${local.name_prefix}"
 }
+
+# Private DNS namespace (Cloud Map) for tasks outside ECS services, which cannot use
+# Service Connect: the one-off direct AI agent (run-task) reaches the test-backend at
+# http://test-backend.<name_prefix>.internal:<port> (see ecs_test_backend.tf).
+resource "aws_service_discovery_private_dns_namespace" "internal" {
+  name        = "${local.name_prefix}.internal"
+  description = "Private DNS for tasks without Service Connect (${local.name_prefix})"
+  vpc         = module.vpc_main.vpc_id
+}

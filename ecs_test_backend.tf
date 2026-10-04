@@ -125,10 +125,30 @@ resource "aws_ecs_service" "test_backend" {
     }
   }
 
+  # Also registers the tasks' IPs in Cloud Map DNS as test-backend.<name_prefix>.internal,
+  # for the one-off direct AI agent (run-task has no Service Connect)
+  service_registries {
+    registry_arn = aws_service_discovery_service.test_backend.arn
+  }
+
   deployment_circuit_breaker {
     enable   = true
     rollback = true
   }
 
   depends_on = [aws_ecs_cluster_capacity_providers.main]
+}
+
+resource "aws_service_discovery_service" "test_backend" {
+  name = local.test_backend_service_connect_name
+
+  dns_config {
+    namespace_id   = aws_service_discovery_private_dns_namespace.internal.id
+    routing_policy = "MULTIVALUE"
+
+    dns_records {
+      type = "A"
+      ttl  = 10
+    }
+  }
 }

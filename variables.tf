@@ -300,20 +300,14 @@ variable "ai_agent_memory" {
   default     = 1024
 }
 
-variable "ai_agent_desired_counts" {
-  description = "Number of running tasks per AI agent service (proxy, direct). At most 1 each: parallel agents of one service would order the same SKUs; 0 stops that agent."
-  type = object({
-    proxy  = number
-    direct = number
-  })
-  default = {
-    proxy  = 1
-    direct = 1
-  }
+variable "ai_agent_desired_count" {
+  description = "Number of running tasks of the proxy AI agent service. At most 1: parallel agents would order the same SKUs; 0 stops it. The direct agent has no service (one-off run-task)."
+  type        = number
+  default     = 1
 
   validation {
-    condition     = alltrue([for count in values(var.ai_agent_desired_counts) : count >= 0 && count <= 1])
-    error_message = "Run at most one task per AI agent service."
+    condition     = var.ai_agent_desired_count >= 0 && var.ai_agent_desired_count <= 1
+    error_message = "Run at most one task of the proxy AI agent service."
   }
 }
 

@@ -62,11 +62,20 @@ locals {
       ecs_services   = [aws_ecs_service.ai_agent["proxy"].id]
       task_roles     = [aws_iam_role.ai_agent_task["proxy"].arn]
     }
+    # No service: the CI pushes the image and starts one-off tasks (github_run_task_apps)
     ai_agent_direct = {
       repository     = var.github_repositories.ai_agent_direct
       ecr_repository = aws_ecr_repository.app["ai-agent-direct"].arn
-      ecs_services   = [aws_ecs_service.ai_agent["direct"].id]
+      ecs_services   = []
       task_roles     = [aws_iam_role.ai_agent_task["direct"].arn]
+    }
+  }
+
+  # Apps whose CI starts one-off tasks (aws ecs run-task), waits for them and reads their logs
+  github_run_task_apps = {
+    ai_agent_direct = {
+      task_definition_family = aws_ecs_task_definition.ai_agent["direct"].family
+      log_group_arn          = aws_cloudwatch_log_group.ai_agent["direct"].arn
     }
   }
 }
@@ -139,13 +148,53 @@ data "aws_iam_policy_document" "github_deploy" {
     resources = ["*"]
   }
 
-  statement {
-    sid = "EcsDeploy"
-    actions = [
-      "ecs:DescribeServices",
-      "ecs:UpdateService",
-    ]
-    resources = each.value.ecs_services
+  dynamic "statement" {
+    for_each = length(each.value.ecs_services) > 0 ? [1] : []
+
+    content {
+      sid = "EcsDeploy"
+      actions = [
+        "ecs:DescribeServices",
+        "ecs:UpdateService",
+      ]
+      resources = each.value.ecs_services
+    }
+  }
+
+  dynamic "statement" {
+    for_each = contains(keys(local.github_run_task_apps), each.key) ? [local.github_run_task_apps[each.key]] : []
+
+    content {
+      sid       = "EcsRunTask"
+      actions   = ["ecs:RunTask"]
+      resources = ["arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:task-definition/${statement.value.task_definition_family}:*"]
+
+      condition {
+        test     = "ArnEquals"
+        variable = "ecs:cluster"
+        values   = [aws_ecs_cluster.main.arn]
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = contains(keys(local.github_run_task_apps), each.key) ? [1] : []
+
+    content {
+      sid       = "EcsWatchTasks"
+      actions   = ["ecs:DescribeTasks", "ecs:StopTask"]
+      resources = ["arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:task/${aws_ecs_cluster.main.name}/*"]
+    }
+  }
+
+  dynamic "statement" {
+    for_each = contains(keys(local.github_run_task_apps), each.key) ? [local.github_run_task_apps[each.key]] : []
+
+    content {
+      sid       = "ReadTaskLogs"
+      actions   = ["logs:GetLogEvents"]
+      resources = [statement.value.log_group_arn, "${statement.value.log_group_arn}:*"]
+    }
   }
 
   # Needed when registering a new task definition revision

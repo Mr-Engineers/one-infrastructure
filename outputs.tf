@@ -130,8 +130,26 @@ output "ecr_ai_agent_direct_repository_url" {
 }
 
 output "ecs_ai_agent_service_names" {
-  description = "Names of the AI agent ECS services, keyed by mode (proxy, direct)."
+  description = "Names of the long-running AI agent ECS services, keyed by mode (proxy)."
   value       = { for mode, service in aws_ecs_service.ai_agent : mode => service.name }
+}
+
+output "ai_agent_direct_run_task" {
+  description = "Everything needed to start the one-off direct AI agent (aws ecs run-task)."
+  value = {
+    cluster         = aws_ecs_cluster.main.name
+    task_definition = aws_ecs_task_definition.ai_agent["direct"].family
+    subnets         = module.vpc_main.private_subnet_ids
+    security_group  = aws_security_group.ai_agent["direct"].id
+    log_group       = aws_cloudwatch_log_group.ai_agent["direct"].name
+    command = join(" ", [
+      "aws ecs run-task --region ${var.aws_region}",
+      "--cluster ${aws_ecs_cluster.main.name}",
+      "--task-definition ${aws_ecs_task_definition.ai_agent["direct"].family}",
+      "--launch-type FARGATE",
+      "--network-configuration 'awsvpcConfiguration={subnets=[${join(",", module.vpc_main.private_subnet_ids)}],securityGroups=[${aws_security_group.ai_agent["direct"].id}],assignPublicIp=DISABLED}'",
+    ])
+  }
 }
 
 output "ecs_cluster_2_name" {

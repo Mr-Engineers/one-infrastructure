@@ -77,6 +77,21 @@ resource "aws_ssm_parameter" "frontend_env" {
   }
 }
 
+# Frontend runtime config, injected into the container by ECS (not the build).
+# A change takes effect after the frontend tasks restart (force new deployment).
+#   aws ssm put-parameter --overwrite --type String \
+#     --name /one/dev/frontend-runtime/API_PROXY_TARGET --value '...'
+resource "aws_ssm_parameter" "frontend_api_proxy_target" {
+  name        = "/${var.project_name}/${var.environment}/frontend-runtime/API_PROXY_TARGET"
+  description = "Frontend runtime API_PROXY_TARGET, injected into the container as an environment variable"
+  type        = "String"
+  value       = "CHANGE_ME"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 # The AI agent's key for proxy-server (Authorization: Bearer). Only identifies the agent;
 # proxy-server decides what it may do.
 #   aws ssm put-parameter --overwrite --type SecureString \
@@ -164,6 +179,7 @@ data "aws_iam_policy_document" "ecs_task_execution_secrets" {
         aws_ssm_parameter.proxy_server_supabase_jwt_secret.arn,
         aws_ssm_parameter.ai_agent_key.arn,
         aws_ssm_parameter.test_backend_gateway_token.arn,
+        aws_ssm_parameter.frontend_api_proxy_target.arn,
       ],
     )
   }

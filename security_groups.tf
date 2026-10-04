@@ -200,6 +200,15 @@ resource "aws_vpc_security_group_ingress_rule" "proxy_server_from_ai_agent" {
   to_port                      = var.proxy_server_container_port
 }
 
+resource "aws_vpc_security_group_ingress_rule" "proxy_server_from_frontend" {
+  security_group_id            = aws_security_group.proxy_server.id
+  description                  = "Traffic from frontend tasks (nginx /api/ proxy)"
+  referenced_security_group_id = aws_security_group.frontend.id
+  ip_protocol                  = "tcp"
+  from_port                    = var.proxy_server_container_port
+  to_port                      = var.proxy_server_container_port
+}
+
 resource "aws_vpc_security_group_ingress_rule" "proxy_server_from_alb" {
   security_group_id            = aws_security_group.proxy_server.id
   description                  = "Traffic from the load balancer (testing)"

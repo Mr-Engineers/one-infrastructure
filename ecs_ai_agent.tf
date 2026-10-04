@@ -1,6 +1,6 @@
 ################################################################################
-# AI agents: long-running workers in cluster 1 (no inbound traffic). Two services
-# from the same image, each with its own task role and security group:
+# AI agents in cluster 1 (no inbound traffic), each with its own task role and
+# security group:
 #
 # "proxy" (one-dev-ai-agent): every action of the agent goes through proxy-server,
 # which decides what the agent may do: PROXY_URL/v1 (LLM), PROXY_URL/apps/warehouse,
@@ -8,8 +8,13 @@
 # accept traffic from the agent.
 #
 # "direct" (one-dev-ai-agent-direct, tests): the agent skips the proxy and calls the
-# test-backend (Service Connect), backend-2 (its load balancer) and Bedrock (task role)
+# test-backend (Cloud Map DNS), backend-2 (its load balancer) and Bedrock (task role)
 # itself. The extra security group rules and the Bedrock policy apply only to it.
+#
+# The proxy agent is a long-running ECS service. The direct agent is a one-off task:
+# no service, it is started by hand (aws ecs run-task, see output ai_agent_direct_run_task,
+# or the "Run agent" workflow in purchasing-agent-test), does one pass and exits, and
+# nothing starts it again.
 #
 # Images: each agent has its own ECR repository and repository with the code:
 #   proxy  -> ECR "ai-agent",        pushed by the purchasing-agent CI
@@ -23,6 +28,7 @@ locals {
     proxy = {
       name_suffix    = ""
       ecr_repository = "ai-agent"
+      standalone     = false
       # The agent derives LLM_BASE_URL, WAREHOUSE_URL and MARKETPLACE_URL from PROXY_URL
       environment = {
         AGENT_MODE = "proxy"
@@ -36,10 +42,11 @@ locals {
     direct = {
       name_suffix    = "-direct"
       ecr_repository = "ai-agent-direct"
+      standalone     = true
       environment = {
         AGENT_MODE      = "direct"
         LLM_BASE_URL    = "https://bedrock-runtime.${var.aws_region}.amazonaws.com/openai/v1"
-        WAREHOUSE_URL   = "${local.test_backend_internal_url}/api/v1"
+        WAREHOUSE_URL   = "${local.test_backend_dns_url}/api/v1"
         MARKETPLACE_URL = local.backend_2_url
       }
       secrets = {
@@ -121,13 +128,14 @@ resource "aws_ecs_task_definition" "ai_agent" {
   ])
 }
 
+# Long-running agents only (proxy); standalone agents are started with run-task
 resource "aws_ecs_service" "ai_agent" {
-  for_each = local.ai_agents
+  for_each = { for mode, agent in local.ai_agents : mode => agent if !agent.standalone }
 
   name            = "${local.name_prefix}-ai-agent${each.value.name_suffix}"
   cluster         = aws_ecs_cluster.main.id
   task_definition = aws_ecs_task_definition.ai_agent[each.key].arn
-  desired_count   = var.ai_agent_desired_counts[each.key]
+  desired_count   = var.ai_agent_desired_count
 
   capacity_provider_strategy {
     capacity_provider = "FARGATE"
@@ -141,7 +149,6 @@ resource "aws_ecs_service" "ai_agent" {
   }
 
   # Client-only Service Connect: lets the agent resolve http://proxy-server:<port>
-  # (proxy agent) or http://test-backend:<port> (direct agent)
   service_connect_configuration {
     enabled   = true
     namespace = aws_service_discovery_http_namespace.main.arn
@@ -157,7 +164,6 @@ resource "aws_ecs_service" "ai_agent" {
   depends_on = [
     aws_ecs_cluster_capacity_providers.main,
     aws_ecs_service.proxy_server,
-    aws_ecs_service.test_backend,
     aws_vpc_endpoint.interface,
     aws_vpc_endpoint.s3,
   ]

@@ -38,6 +38,19 @@ resource "aws_ecs_task_definition" "frontend" {
           name  = "BACKEND_URL"
           value = local.backend_internal_url
         },
+        {
+          # Internal proxy-server address (via Service Connect): admin API behind nginx /api/
+          name  = "PROXY_SERVER_URL"
+          value = local.proxy_server_internal_url
+        },
+      ]
+
+      secrets = [
+        {
+          # Value set in SSM outside Terraform (see ssm.tf)
+          name      = "API_PROXY_TARGET"
+          valueFrom = aws_ssm_parameter.frontend_api_proxy_target.arn
+        },
       ]
 
       logConfiguration = {
