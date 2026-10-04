@@ -27,39 +27,40 @@ locals {
     frontend = {
       repository     = var.github_repositories.frontend
       ecr_repository = aws_ecr_repository.app["frontend"].arn
-      ecs_service    = aws_ecs_service.frontend.id
-      task_role      = aws_iam_role.frontend_task.arn
+      ecs_services   = [aws_ecs_service.frontend.id]
+      task_roles     = [aws_iam_role.frontend_task.arn]
     }
     backend = {
       repository     = var.github_repositories.backend
       ecr_repository = aws_ecr_repository.app["backend"].arn
-      ecs_service    = aws_ecs_service.backend.id
-      task_role      = aws_iam_role.backend_task.arn
+      ecs_services   = [aws_ecs_service.backend.id]
+      task_roles     = [aws_iam_role.backend_task.arn]
     }
     # Key must match var.github_repositories (it indexes github_oidc_subjects)
     test_backend = {
       repository     = var.github_repositories.test_backend
       ecr_repository = aws_ecr_repository.app["test-backend"].arn
-      ecs_service    = aws_ecs_service.test_backend.id
-      task_role      = aws_iam_role.test_backend_task.arn
+      ecs_services   = [aws_ecs_service.test_backend.id]
+      task_roles     = [aws_iam_role.test_backend_task.arn]
     }
     proxy_server = {
       repository     = var.github_repositories.proxy_server
       ecr_repository = aws_ecr_repository.app["proxy-server"].arn
-      ecs_service    = aws_ecs_service.proxy_server.id
-      task_role      = aws_iam_role.proxy_server_task.arn
+      ecs_services   = [aws_ecs_service.proxy_server.id]
+      task_roles     = [aws_iam_role.proxy_server_task.arn]
     }
     backend_2 = {
       repository     = var.github_repositories.backend_2
       ecr_repository = aws_ecr_repository.app["backend-2"].arn
-      ecs_service    = aws_ecs_service.backend_2.id
-      task_role      = aws_iam_role.backend_2_task.arn
+      ecs_services   = [aws_ecs_service.backend_2.id]
+      task_roles     = [aws_iam_role.backend_2_task.arn]
     }
     ai_agent = {
       repository     = var.github_repositories.ai_agent
       ecr_repository = aws_ecr_repository.app["ai-agent"].arn
-      ecs_service    = aws_ecs_service.ai_agent.id
-      task_role      = aws_iam_role.ai_agent_task.arn
+      # One image, two services (proxy and direct, see ecs_ai_agent.tf)
+      ecs_services = [for service in aws_ecs_service.ai_agent : service.id]
+      task_roles   = [for role in aws_iam_role.ai_agent_task : role.arn]
     }
   }
 }
@@ -138,17 +139,14 @@ data "aws_iam_policy_document" "github_deploy" {
       "ecs:DescribeServices",
       "ecs:UpdateService",
     ]
-    resources = [each.value.ecs_service]
+    resources = each.value.ecs_services
   }
 
   # Needed when registering a new task definition revision
   statement {
-    sid     = "PassTaskRoles"
-    actions = ["iam:PassRole"]
-    resources = [
-      aws_iam_role.ecs_task_execution.arn,
-      each.value.task_role,
-    ]
+    sid       = "PassTaskRoles"
+    actions   = ["iam:PassRole"]
+    resources = concat([aws_iam_role.ecs_task_execution.arn], each.value.task_roles)
 
     condition {
       test     = "StringEquals"

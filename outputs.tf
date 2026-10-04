@@ -124,9 +124,9 @@ output "ecr_ai_agent_repository_url" {
   value       = aws_ecr_repository.app["ai-agent"].repository_url
 }
 
-output "ecs_ai_agent_service_name" {
-  description = "Name of the AI agent ECS service."
-  value       = aws_ecs_service.ai_agent.name
+output "ecs_ai_agent_service_names" {
+  description = "Names of the AI agent ECS services, keyed by mode (proxy, direct)."
+  value       = { for mode, service in aws_ecs_service.ai_agent : mode => service.name }
 }
 
 output "ecs_cluster_2_name" {

@@ -295,36 +295,38 @@ variable "ai_agent_memory" {
   default     = 1024
 }
 
-variable "ai_agent_desired_count" {
-  description = "Number of running AI agent tasks. At most 1: parallel agents would order the same SKUs."
-  type        = number
-  default     = 1
-
-  validation {
-    condition     = var.ai_agent_desired_count <= 1
-    error_message = "Run at most one AI agent task."
+variable "ai_agent_desired_counts" {
+  description = "Number of running tasks per AI agent service (proxy, direct). At most 1 each: parallel agents of one service would order the same SKUs; 0 stops that agent."
+  type = object({
+    proxy  = number
+    direct = number
+  })
+  default = {
+    proxy  = 1
+    direct = 1
   }
-}
-
-variable "ai_agent_mode" {
-  description = <<-EOT
-    How the AI agent reaches the LLM and the apps (AGENT_MODE):
-    proxy  - only through proxy-server (production setup, agent has no other egress);
-    direct - for tests: Bedrock, the test-backend and backend-2 directly, without the proxy.
-  EOT
-  type        = string
-  default     = "proxy"
 
   validation {
-    condition     = contains(["proxy", "direct"], var.ai_agent_mode)
-    error_message = "ai_agent_mode must be \"proxy\" or \"direct\"."
+    condition     = alltrue([for count in values(var.ai_agent_desired_counts) : count >= 0 && count <= 1])
+    error_message = "Run at most one task per AI agent service."
   }
 }
 
 variable "ai_agent_environment" {
-  description = "Plain-text environment variables for the AI agent (POLL_INTERVAL_S, MAX_PARALLEL_SESSIONS, ...); override the defaults set in ecs_ai_agent.tf."
+  description = "Plain-text environment variables for both AI agents (POLL_INTERVAL_S, MAX_PARALLEL_SESSIONS, ...); override the defaults set in ecs_ai_agent.tf."
   type        = map(string)
   default     = {}
+}
+
+variable "ai_agent_mode_environment" {
+  description = "Plain-text environment variables for one AI agent only, keyed by mode (proxy, direct); override ai_agent_environment."
+  type        = map(map(string))
+  default     = {}
+
+  validation {
+    condition     = alltrue([for mode in keys(var.ai_agent_mode_environment) : contains(["proxy", "direct"], mode)])
+    error_message = "ai_agent_mode_environment keys must be \"proxy\" or \"direct\"."
+  }
 }
 
 ################################################################################

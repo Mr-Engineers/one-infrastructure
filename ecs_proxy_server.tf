@@ -64,6 +64,12 @@ resource "aws_ecs_task_definition" "proxy_server" {
           name      = "MARKETPLACE_API_TOKEN"
           valueFrom = aws_ssm_parameter.backend_2_secret["MARKETPLACE_API_TOKEN"].arn
         },
+
+        {
+          # Admin API (/api/v1) verifies frontend Supabase JWTs against this project's JWKS
+          name      = "SUPABASE_URL"
+          valueFrom = aws_ssm_parameter.backend_secret["SUPABASE_URL"].arn
+        },
       ]
 
       logConfiguration = {
