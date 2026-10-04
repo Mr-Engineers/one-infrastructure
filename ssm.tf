@@ -121,6 +121,35 @@ resource "aws_ssm_parameter" "proxy_server_database_url" {
   }
 }
 
+# Supabase project URL; the admin API (/api/v1) fetches its JWKS to verify frontend tokens.
+#   aws ssm put-parameter --overwrite --type SecureString \
+#     --name /one/dev/proxy/SUPABASE_URL --value 'https://<project>.supabase.co'
+resource "aws_ssm_parameter" "proxy_server_supabase_url" {
+  name        = "/${var.project_name}/${var.environment}/proxy/SUPABASE_URL"
+  description = "Supabase project URL used by proxy-server to verify operator JWTs"
+  type        = "SecureString"
+  value       = "CHANGE_ME"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
+# Legacy HS256 JWT secret of the Supabase project (Project Settings -> JWT Keys). Only needed
+# while the project still signs tokens with HS256; with ECC/RSA keys SUPABASE_URL is enough.
+#   aws ssm put-parameter --overwrite --type SecureString \
+#     --name /one/dev/proxy/SUPABASE_JWT_SECRET --value '...'
+resource "aws_ssm_parameter" "proxy_server_supabase_jwt_secret" {
+  name        = "/${var.project_name}/${var.environment}/proxy/SUPABASE_JWT_SECRET"
+  description = "Supabase legacy JWT secret used by proxy-server to verify HS256 operator JWTs"
+  type        = "SecureString"
+  value       = "CHANGE_ME"
+
+  lifecycle {
+    ignore_changes = [value]
+  }
+}
+
 
 data "aws_iam_policy_document" "ecs_task_execution_secrets" {
   statement {
@@ -131,7 +160,8 @@ data "aws_iam_policy_document" "ecs_task_execution_secrets" {
       [for parameter in aws_ssm_parameter.backend_2_secret : parameter.arn],
       [
         aws_ssm_parameter.gateway_token.arn, aws_ssm_parameter.proxy_server_database_url.arn,
-        aws_ssm_parameter.proxy_server_database_url.arn,
+        aws_ssm_parameter.proxy_server_supabase_url.arn,
+        aws_ssm_parameter.proxy_server_supabase_jwt_secret.arn,
         aws_ssm_parameter.ai_agent_key.arn,
         aws_ssm_parameter.test_backend_gateway_token.arn,
       ],
